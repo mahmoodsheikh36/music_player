@@ -16,7 +16,9 @@ class SongProvider {
         name TEXT NOT NULL,
         artist TEXT NOT NULL,
         album TEXT NOT NULL,
-        audioFilePath TEXT
+        audioFilePath TEXT,
+        imageFilePath TEXT,
+        lyrics TEXT
       )
       '''
     );
