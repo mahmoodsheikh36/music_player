@@ -27,14 +27,19 @@ class SongListWidget extends StatelessWidget {
               return InkWell(
                 onTap: () {
                   Song song = snapshot.data[index];
-                  _songProvider.prepareSongForPlaying(song).then((bool success) {
-                      if (success) {
-                        _musicPlayer.play(song);
-                      } else {
-                        print('error preparing song \'' + song.name +
-                          '\' for playing');
-                      }
-                  });
+                  if (_songProvider.songAudioExistsLocally(song)) {
+                    _musicPlayer.play(song);
+                  } else {
+                    _songProvider.prepareSongForPlaying(song).then((bool success) {
+                        if (success) {
+                            _musicPlayer.addToQueue(song);
+                        } else {
+                            print('error preparing song \'' + song.name +
+                            '\' for playing');
+                        }
+                    });
+                  }
+                  _songProvider.prepareSongForPlayerPreview(song);
                 },
                 child: Row(
                   children: [
