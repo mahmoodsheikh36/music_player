@@ -9,9 +9,9 @@ import 'files.dart';
 class MusicPlayer {
   final AudioPlayer _audioPlayer = AudioPlayer();
   final List<Function> _onPlaySongListeners = List<Function>();
+  final Queue<Song> _queue = Queue();
   double _progress;
   bool _playing = true;
-  Queue<Song> _queue = Queue();
 
   MusicPlayer() {
     _audioPlayer.onAudioPositionChanged.listen((Duration progress) {
