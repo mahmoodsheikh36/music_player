@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:audioplayer/audioplayer.dart';
 import 'package:player/database.dart';
 
@@ -9,8 +11,7 @@ class MusicPlayer {
   final List<Function> _onPlaySongListeners = List<Function>();
   double _progress;
   bool _playing = true;
-  Song _currentSong;
-  bool locked = false;
+  Queue<Song> _queue = Queue();
 
   MusicPlayer() {
     _audioPlayer.onAudioPositionChanged.listen((Duration progress) {
@@ -20,8 +21,8 @@ class MusicPlayer {
     _audioPlayer.onPlayerStateChanged.listen((AudioPlayerState state) {
       switch (state) {
         case AudioPlayerState.COMPLETED:
-          play(currentSong);
-          _playing = true;
+          _onSongComplete();
+          _playing = false;
           break;
         case AudioPlayerState.PLAYING:
           _playing = true;
@@ -42,26 +43,30 @@ class MusicPlayer {
     await _audioPlayer.play((await Files.getAbsoluteFilePath(path)), isLocal: true);
   }
 
-  Future<bool> prepareToPlay(Song song) async {
-    if (locked)
-      return false;
-    locked = true;
-    _currentSong = song;
-    await _audioPlayer.stop();
-    return true;
+  Future<void> addToQueue(Song song) async {
+    _queue.add(song);
   }
 
-  Future<void> play(Song song) async {
-    locked = false;
-    print('playing song: ' + song.name);
-    await _playLocal(song.audioFilePath);
-    for (Function listener in _onPlaySongListeners) {
-      listener(song);
+  Future<void> skip() async {
+    await _audioPlayer.stop();
+    _queue.removeFirst();
+    if (_queue.isNotEmpty) {
+      _playLocal(_queue.first.audioFilePath);
+      _notifyPlaySongListeners(_queue.first);
     }
   }
 
+  Future<void> play(Song song) async {
+    print('playing song: ' + song.name);
+    await _audioPlayer.stop();
+    _queue.addFirst(song);
+    await _playLocal(song.audioFilePath);
+    _notifyPlaySongListeners(song);
+  }
+
   Future<void> resume() async {
-    await _audioPlayer.play((await Files.getAbsoluteFilePath(_currentSong.audioFilePath)), isLocal: true);
+    Song songToResume = _queue.first;
+    await _playLocal(songToResume.audioFilePath);
   }
 
   Future<void> pause() async {
@@ -73,14 +78,14 @@ class MusicPlayer {
   }
 
   Future<void> _seekPosition(double seconds) async {
+    print('seeked position ' + seconds.toString());
     await _audioPlayer.seek(seconds);
   }
 
   Future<void> seekPercentage(double percentage) async {
     percentage = percentage < 0 ? 0 : percentage > 100 ? 100 : percentage;
-    double position = _currentSong.duration * (percentage / 100);
+    double position = _queue.first.duration * (percentage / 100);
     await _seekPosition(position);
-    print('seeked position ' + position.toString());
   }
 
   Stream<AudioPlayerState> onPlayerStateChanged() {
@@ -95,8 +100,26 @@ class MusicPlayer {
     this._onPlaySongListeners.remove(listener);
   }
 
+  void _onSongComplete() {
+    _queue.removeFirst();
+    if (_queue.isNotEmpty) {
+      _playLocal(_queue.first.audioFilePath);
+      _notifyPlaySongListeners(_queue.first);
+    }
+    else
+      print('queue empty, no more songs');
+  }
+
+  void _notifyPlaySongListeners(Song song) {
+    for (Function listener in _onPlaySongListeners) {
+      listener(song);
+    }
+  }
+
   Song get currentSong {
-    return _currentSong;
+    if (_queue.isEmpty)
+      return null;
+    return _queue.first;
   }
 
   double get progress {

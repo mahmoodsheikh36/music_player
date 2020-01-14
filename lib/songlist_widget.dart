@@ -27,20 +27,13 @@ class SongListWidget extends StatelessWidget {
               return InkWell(
                 onTap: () {
                   Song song = snapshot.data[index];
-                  _musicPlayer.prepareToPlay(song).then((bool canPlaySong) {
-                    if (canPlaySong) {
-                      _songProvider.prepareSongForPlaying(song).then((
-                          bool success) {
-                        if (success) {
-                          _musicPlayer.play(song);
-                        } else {
-                          print('error preparing song \'' + song.name +
-                              '\' for playing');
-                        }
-                      });
-                    } else {
-                      print('music player is locked and cant play another song atm');
-                    }
+                  _songProvider.prepareSongForPlaying(song).then((bool success) {
+                      if (success) {
+                        _musicPlayer.play(song);
+                      } else {
+                        print('error preparing song \'' + song.name +
+                          '\' for playing');
+                      }
                   });
                 },
                 child: Row(
