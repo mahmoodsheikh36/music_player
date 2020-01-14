@@ -145,4 +145,9 @@ class SongProvider {
     if (success) this.updateSong(song);
     return success;
   }
+
+  bool songAudioExistsLocally(Song song) {
+    String localPath = _AUDIO_FOLDER + "/" + song.id.toString() + '.audio';
+    return song.audioFilePath == localPath;
+  }
 }
