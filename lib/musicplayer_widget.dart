@@ -76,7 +76,22 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                 SizedBox(height: 40),
                 _ProgressIndicator(_musicPlayer),
                 SizedBox(height: 40),
-                _PlayPauseButton(_musicPlayer),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    IconButton(
+                      tooltip: 'go back',
+                      icon: Icon(Icons.skip_previous),
+                      iconSize: 35,
+                    ),
+                    _PlayPauseButton(_musicPlayer),
+                    IconButton(
+                      tooltip: 'skip',
+                      icon: Icon(Icons.skip_next),
+                      iconSize: 35,
+                    ),
+                  ],
+                ),
               ],
             )
         )
@@ -107,6 +122,10 @@ class _ProgressIndicatorState extends State<_ProgressIndicator> with SingleTicke
     _controller..forward(from: 0);
   }
 
+  Future<void> _onProgressListener(double progress) {
+    _controller.value = progress / _musicPlayer.currentSong.duration;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -127,12 +146,14 @@ class _ProgressIndicatorState extends State<_ProgressIndicator> with SingleTicke
         _controller.reset();
     });
 
-    _musicPlayer.addOnPlaySongListener(this._onPlaySongListener);
+    _musicPlayer.addOnPlaySongListener(_onPlaySongListener);
+    _musicPlayer.addOnProgressListener(_onProgressListener);
   }
 
   @override
   void dispose() {
     _musicPlayer.removeOnPlaySongListener(_onPlaySongListener);
+    _musicPlayer.removeOnProgressListener(_onProgressListener);
     _controller.stop();
     super.dispose();
   }
