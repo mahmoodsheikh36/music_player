@@ -7,20 +7,25 @@ import 'song.dart';
 import 'files.dart';
 
 class MusicPlayer {
+  // typedef Listener = void Function(double previous, double current, bool seekedPosition);
   final AudioPlayer _audioPlayer = AudioPlayer();
   final List<Function> _onPlaySongListeners = List<Function>();
   final List<Function> _onProgressListeners = List<Function>();
+  final List<Function> _onPauseListeners = List<Function>();
+  final List<Function> _onResumeListeners = List<Function>();
   final Queue<Song> _queue = Queue();
-  double _progress;
-  bool _playing = true;
+  double _progress = 0;
+  bool _playing = false;
 
   MusicPlayer() {
     _audioPlayer.onAudioPositionChanged.listen((Duration progress) {
-      _progress = progress.inMilliseconds / 1000.0;
-      _notifyOnProgressListeners(_progress);
+      double newProgress = progress.inMilliseconds / 1000.0;
+      _notifyOnProgressListeners(_progress, newProgress, false);
+      _progress = newProgress;
     });
 
     _audioPlayer.onPlayerStateChanged.listen((AudioPlayerState state) {
+      print(state);
       switch (state) {
         case AudioPlayerState.COMPLETED:
           _onSongComplete();
@@ -46,48 +51,57 @@ class MusicPlayer {
   }
 
   void addToQueue(Song song) {
+    bool emptyQueue = _queue.isEmpty;
     _queue.add(song);
-    if (!_playing)
-        this.resume();
+    if (emptyQueue) {
+      _playLocal(song.audioFilePath).then((whatever) {
+          _playing = true;
+          this._notifyPlaySongListeners(null, song);
+      });
+    } else if (!_playing) {
+      this.resume();
+    }
   }
 
   Future<void> skip() async {
     await _audioPlayer.stop();
-    _queue.removeFirst();
-    if (_queue.isNotEmpty) {
-      _playLocal(_queue.first.audioFilePath);
-      _notifyPlaySongListeners(_queue.first);
+    _progress = 0;
+    Song skippedSong = _queue.removeFirst();
+    if (_queue.isEmpty) {
+      _queue.addFirst(skippedSong);
     }
+    await _playLocal(_queue.first.audioFilePath);
+    _notifyPlaySongListeners(skippedSong, _queue.first);
   }
 
   Future<void> play(Song song) async {
-    print('playing song: ' + song.name);
     await _audioPlayer.stop();
+    _progress = 0;
+    Song skippedSong;
+    if (!_queue.isEmpty)
+      skippedSong = _queue.removeFirst();
     _queue.addFirst(song);
     await _playLocal(song.audioFilePath);
-    _notifyPlaySongListeners(song);
+    _notifyPlaySongListeners(skippedSong, song);
   }
 
   Future<void> resume() async {
     Song songToResume = _queue.first;
     await _playLocal(songToResume.audioFilePath);
     _playing = true;
+    _notifyOnResumeListeners();
   }
 
   Future<void> pause() async {
     await _audioPlayer.pause();
     _playing = false;
-  }
-
-  Future<void> stop() async {
-    await _audioPlayer.stop();
-    _playing = false;
+    _notifyOnPauseListeners();
   }
 
   Future<void> _seekPosition(double seconds) async {
     print('seeked position ' + seconds.toString());
     await _audioPlayer.seek(seconds);
-    _notifyOnProgressListeners(seconds);
+    _notifyOnProgressListeners(_progress, seconds, true);
     _progress = seconds;
   }
 
@@ -107,6 +121,11 @@ class MusicPlayer {
   void removeOnPlaySongListener(Function listener) {
     this._onPlaySongListeners.remove(listener);
   }
+  void _notifyPlaySongListeners(Song oldSong, Song newSong) {
+    for (Function listener in _onPlaySongListeners) {
+      listener(oldSong, newSong);
+    }
+  }
 
   void addOnProgressListener(Function listener) {
     this._onProgressListeners.add(listener);
@@ -114,26 +133,50 @@ class MusicPlayer {
   void removeOnProgressListener(Function listener) {
     this._onProgressListeners.remove(listener);
   }
-  void _notifyOnProgressListeners(double progress) {
+  void _notifyOnProgressListeners(double previousProgress,
+                                  double currentProgress,
+                                  bool   seekedPosition) {
     for (Function listener in _onProgressListeners) {
-      listener(progress);
+      listener(previousProgress, currentProgress, seekedPosition);
+    }
+  }
+
+  void addOnPauseListener(Function listener) {
+    this._onPauseListeners.add(listener);
+  }
+  void removeOnPauseListener(Function listener) {
+    this._onPauseListeners.remove(listener);
+  }
+  void _notifyOnPauseListeners() {
+    for (Function listener in _onPauseListeners) {
+      listener();
+    }
+  }
+
+  void addOnResumeListener(Function listener) {
+    this._onResumeListeners.add(listener);
+  }
+  void removeOnResumeListener(Function listener) {
+    this._onPauseListeners.remove(listener);
+  }
+  void _notifyOnResumeListeners() {
+    print('notifying resume...');
+    for (Function listener in _onResumeListeners) {
+      listener();
     }
   }
 
   Future<void> _onSongComplete() async {
-      Song removedSong = _queue.removeFirst();
-      if (_queue.isNotEmpty) {
-        await _playLocal(_queue.first.audioFilePath);
-        _notifyPlaySongListeners(_queue.first);
-      } else {
-        print('queue empty, replaying last song');
-        await play(removedSong);
-      }
-  }
-
-  void _notifyPlaySongListeners(Song song) {
-    for (Function listener in _onPlaySongListeners) {
-      listener(song);
+    await _audioPlayer.stop();
+    _progress = 0;
+    Song removedSong = _queue.removeFirst();
+    if (_queue.isNotEmpty) {
+      await _playLocal(_queue.first.audioFilePath);
+      _notifyPlaySongListeners(removedSong, _queue.first);
+    } else {
+      print('queue empty after complete, replaying last song');
+      _queue.addFirst(removedSong);
+      await _playLocal(removedSong.audioFilePath);
     }
   }
 
