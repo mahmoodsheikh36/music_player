@@ -21,7 +21,7 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
   final MusicPlayer _musicPlayer;
   final SongProvider _songProvider;
 
-  void _onPlaySongListener(Song song) {
+  void _onPlaySongListener(Song oldSong, Song newSong) {
     setState(() {
       /* just rebuild the widget */
     });
@@ -31,6 +31,7 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
     _musicPlayer.addOnPlaySongListener(_onPlaySongListener);
   }
 
+  @override
   void dispose() {
     _musicPlayer.removeOnPlaySongListener(_onPlaySongListener);
     super.dispose();
@@ -46,55 +47,56 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
   @override
   Widget build(BuildContext context) {
     return Center(
-        child: Container(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                FutureBuilder<File>(
-                  future: _getSongImageFile(_musicPlayer.currentSong),
-                  builder: (BuildContext context, AsyncSnapshot<File> snapshot) {
-                    if (snapshot.hasError)
-                      print(snapshot.error);
+      child: _musicPlayer.currentSong != null ?
+      Container(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: <Widget>[
+            FutureBuilder<File>(
+              future: _getSongImageFile(_musicPlayer.currentSong),
+              builder: (BuildContext context, AsyncSnapshot<File> snapshot) {
+                if (snapshot.hasError)
+                print(snapshot.error);
 
-                    if (snapshot.hasData && snapshot.data != null) {
-                      return Image.file(
-                        snapshot.data,
-                        width: MediaQuery.of(context).size.width * 0.65,
-                      );
-                    } else {
-                      return CircularProgressIndicator();
-                    }
-                  },
+                if (snapshot.hasData && snapshot.data != null) {
+                  return Image.file(
+                    snapshot.data,
+                    width: MediaQuery.of(context).size.width * 0.65,
+                  );
+                } else {
+                  return CircularProgressIndicator();
+                }
+              },
+            ),
+            SizedBox(height: 40),
+            Text(
+              _musicPlayer.currentSong.name + ' - ' + _musicPlayer.currentSong.artist,
+              style: Theme.of(context).textTheme.title,
+            ),
+            SizedBox(height: 40),
+            _ProgressIndicator(_musicPlayer),
+            SizedBox(height: 40),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                IconButton(
+                  tooltip: 'go back',
+                  icon: Icon(Icons.skip_previous),
+                  iconSize: 35,
                 ),
-                SizedBox(height: 40),
-                Text(
-                  _musicPlayer.currentSong.name + ' - ' + _musicPlayer.currentSong.artist,
-                  style: Theme.of(context).textTheme.title,
-                ),
-                SizedBox(height: 40),
-                _ProgressIndicator(_musicPlayer),
-                SizedBox(height: 40),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    IconButton(
-                      tooltip: 'go back',
-                      icon: Icon(Icons.skip_previous),
-                      iconSize: 35,
-                    ),
-                    _PlayPauseButton(_musicPlayer),
-                    IconButton(
-                      tooltip: 'skip',
-                      icon: Icon(Icons.skip_next),
-                      iconSize: 35,
-                    ),
-                  ],
+                _PlayPauseButton(_musicPlayer),
+                IconButton(
+                  tooltip: 'skip',
+                  icon: Icon(Icons.skip_next),
+                  iconSize: 35,
                 ),
               ],
-            )
+            ),
+          ],
         )
+      ) : CircularProgressIndicator()
     );
   }
 
@@ -117,13 +119,15 @@ class _ProgressIndicatorState extends State<_ProgressIndicator> with SingleTicke
 
   _ProgressIndicatorState(this._musicPlayer);
 
-  Future<void> _onPlaySongListener(Song newPlayedSong) async {
-    _controller.duration = new Duration(seconds: newPlayedSong.duration);
-    _controller..forward(from: 0);
+  Future<void> _onPlaySongListener(Song oldSong, Song newSong) async {
+    _controller.duration = new Duration(seconds: newSong.duration);
+    // _controller..forward(from: 0);
   }
 
-  Future<void> _onProgressListener(double progress) {
-    _controller.value = progress / _musicPlayer.currentSong.duration;
+  Future<void> _onProgressListener(double oldProgress,
+                                   double newProgress,
+                                   bool   seekedPosition) {
+    _controller.value = newProgress / _musicPlayer.currentSong.duration;
   }
 
   @override
@@ -134,7 +138,7 @@ class _ProgressIndicatorState extends State<_ProgressIndicator> with SingleTicke
       duration: Duration(seconds: _musicPlayer.currentSong.duration),
       vsync: this,
       animationBehavior: AnimationBehavior.preserve,
-    )..forward(from: _musicPlayer.progress / _musicPlayer.currentSong.duration);
+    );//..forward(from: _musicPlayer.progress / _musicPlayer.currentSong.duration);
 
     _animation = CurvedAnimation(
       parent: _controller,
@@ -169,7 +173,7 @@ class _ProgressIndicatorState extends State<_ProgressIndicator> with SingleTicke
     Offset pos = details.localPosition;
     double percentage = pos.dx / width * 100;
     _musicPlayer.seekPercentage(percentage);
-    _controller..forward(from: pos.dx / width);
+    // _controller..forward(from: pos.dx / width);
   }
 
   @override
@@ -180,14 +184,14 @@ class _ProgressIndicatorState extends State<_ProgressIndicator> with SingleTicke
       key: _gestureDetectorKey,
       child: Column(
         children: [
-          SizedBox(height: 5),
+          SizedBox(height: 10),
           AnimatedBuilder(
             animation: _animation,
             builder: (BuildContext context, Widget widget) {
               return LinearProgressIndicator(value: _animation.value);
             },
           ),
-          SizedBox(height: 5),
+          SizedBox(height: 10),
         ]
       ),
     );
