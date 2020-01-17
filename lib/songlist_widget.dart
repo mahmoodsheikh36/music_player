@@ -32,8 +32,8 @@ class SongListWidget extends StatelessWidget {
                   } else {
                     _songProvider.prepareSongForPlaying(song).then((bool success) {
                         if (success) {
-                          print('added \'' + song.name + '\' to queue');
                           _musicPlayer.addToQueue(song);
+                          print('added \'' + song.name + '\' to queue');
                         } else {
                             print('error preparing song \'' + song.name +
                             '\' for playing');
