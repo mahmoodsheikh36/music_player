@@ -3,11 +3,13 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
+
 import 'files.dart';
 import 'song.dart';
+import 'datacollection.dart';
 
-final _AUDIO_FOLDER = 'audio';
-final _IMAGE_FOLDER = 'image';
+final _AUDIO_FOLDER  = 'audio';
+final _IMAGE_FOLDER  = 'image';
 
 class SongProvider {
   Database db;
@@ -33,47 +35,75 @@ class SongProvider {
         audioFilePath TEXT,
         imageFilePath TEXT,
         lyrics TEXT,
-        duration int
-      )
+        duration int,
+        secondsListened REAL
+      );
+      '''
+    );
+    await db.execute('''
+      CREATE TABLE playbacks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        songId INTEGER,
+        startDate TEXT NOT NULL,
+        endDate TEXT NOT NULL,
+        progressOnEnd REAL
+      );
       '''
     );
   }
 
   Future<void> open() async {
-    if (await databaseExists('music.db')) {
+    final DATABASE_PATH = await Files.getAbsoluteFilePath('music.db');
+    if (await databaseExists(DATABASE_PATH)) {
       _isNewDatabase = false;
     }
     db = await openDatabase(
-      'music.db',
+      DATABASE_PATH,
       version: 11,
       onCreate: this.onCreate
     );
     if (_isNewDatabase) {
       List<Song> songs = await _fetchAllSongsMetadata();
       for (Song song in songs) {
-        await insert(song);
-        print(song);
+        print('inserting song: ' + song.name);
+        await insertSong(song);
       }
     }
   }
 
-  Future insert(Song song) async {
+  Future insertSong(Song song) async {
     await db.insert('songs', song.toMap());
   }
 
-  Future<Song> getSong(String id) async {
+  Future insertPlayback(Playback playback) async {
+    await db.insert('playbacks', playback.toMap(withId: false));
+  }
+
+  Future<Playback> getLastPlayback() async {
+    List<Map<String, dynamic>> maps = (await db.query(
+      'sqlite_sequence',
+      columns: [
+        'seq',
+      ],
+      where: 'name = ?',
+      whereArgs: ['playbacks'],
+    ));
+    if (maps.length == 0)
+        return null;
+
+    int lastPlaybackId = maps[0]['seq'];
+    return Playback.fromMap((await db.query(
+        'playbacks',
+        columns: null,
+        where: 'id = ?',
+        whereArgs: [lastPlaybackId],
+    ))[0]);
+  }
+
+  Future<Song> getSong(int id) async {
     List<Map> maps = (await db.query(
       'songs',
-      columns: [
-        'id',
-        'name',
-        'artist',
-        'album',
-        'audioFilePath',
-        'imageFilePath',
-        'lyrics',
-        'duration',
-      ],
+      columns: null,
       where: 'id = ?',
       whereArgs: [id]
     ));
@@ -85,16 +115,7 @@ class SongProvider {
   Future<List<Song>> getAllSongs() async {
     List<Map> maps = (await db.query(
       'songs',
-      columns: [
-        'id',
-        'name',
-        'artist',
-        'album',
-        'audioFilePath',
-        'imageFilePath',
-        'lyrics',
-        'duration',
-      ],
+      columns: null,
     ));
     List<Song> songs = List<Song>();
     for (Map map in maps) {
@@ -103,9 +124,24 @@ class SongProvider {
     return songs;
   }
 
+  /* shouldnt update all values at once unless necessary */
   Future<void> updateSong(Song song) async {
     return await db.update('songs', song.toMap(),
-        where: 'id = ?', whereArgs: [song.id]);
+      where: 'id = ?', whereArgs: [song.id]);
+  }
+  /* use this to update specific values */
+  Future<void> updateSongColumns(Song song, Map<String, dynamic> values) async {
+    return await db.update('songs', values,
+      where: 'id = ?', whereArgs: [song.id]);
+  }
+
+  Future<void> updatePlayback(Playback playback) async {
+    return await db.update('playbacks', playback.toMap(),
+      where: 'id = ?', whereArgs: [playback.id]);
+  }
+  Future updatePlaybackColumns(Playback playback, Map<String, dynamic> values) async {
+    return await db.update('playbacks', values,
+      where: 'id = ?', whereArgs: [playback.id]);
   }
 
   Future<bool> _downloadSongAudio(Song song) async {
@@ -135,14 +171,16 @@ class SongProvider {
   Future<bool> prepareSongForPlaying(Song song) async {
     print('preparing song \'' + song.name + '\' for playing');
     bool success = await _downloadSongAudio(song);
-    if (success) this.updateSong(song);
+    if (success) await this.updateSongColumns(song,
+      <String, String>{'audioFilePath': song.audioFilePath});
     return success;
   }
 
   Future<bool> prepareSongForPlayerPreview(Song song) async {
     print('preparing song \'' + song.name + '\' for player preview');
     bool success = await _downloadSongImage(song);
-    if (success) this.updateSong(song);
+    if (success) await this.updateSongColumns(song,
+      <String, String>{'imageFilePath': song.imageFilePath});
     return success;
   }
 
