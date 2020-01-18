@@ -37,7 +37,7 @@ class SongProvider {
         lyrics TEXT,
         duration int,
         secondsListened REAL,
-        dateAdded TEXT NOT NULL,
+        dateAdded TEXT NOT NULL
       );
       '''
     );
