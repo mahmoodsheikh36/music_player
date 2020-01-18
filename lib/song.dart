@@ -4,6 +4,7 @@ import 'package:player/database.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:core';
 import 'files.dart';
 
 class Song {
@@ -15,9 +16,10 @@ class Song {
   String imageFilePath;
   String lyrics;
   double secondsListened;
+  DateTime dateAdded;
   int duration;
 
-  Song({this.id, this.name, this.artist, this.album, this.duration, this.secondsListened});
+  Song({this.id, this.name, this.artist, this.album, this.duration, this.secondsListened, this.dateAdded});
 
   factory Song.fromJson(Map<String, dynamic> json) {
     /* parsing songs form json is only done when fetching data from
@@ -30,6 +32,7 @@ class Song {
       artist: json['artist'] as String,
       album: json['album'] as String,
       duration: json['duration'] as int,
+      dateAdded: DateTime.parse(json['dateAdded'] as String),
     );
   }
 
@@ -44,6 +47,7 @@ class Song {
       'lyrics': lyrics,
       'duration': duration,
       'secondsListened': secondsListened,
+      'dateAdded': dateAdded,
     };
   }
 
@@ -55,6 +59,7 @@ class Song {
       album: map['album'],
       duration: map['duration'],
       secondsListened: map['secondsListened'],
+      dateAdded: map['dateAdded'],
     );
     if (map.containsKey('audioFilePath'))
       song.audioFilePath = map['audioFilePath'];
