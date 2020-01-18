@@ -36,7 +36,8 @@ class SongProvider {
         imageFilePath TEXT,
         lyrics TEXT,
         duration int,
-        secondsListened REAL
+        secondsListened REAL,
+        dateAdded TEXT NOT NULL,
       );
       '''
     );
