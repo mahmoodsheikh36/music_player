@@ -32,7 +32,7 @@ class Song {
       artist: json['artist'] as String,
       album: json['album'] as String,
       duration: json['duration'] as int,
-      dateAdded: DateTime.parse(json['dateAdded'] as String),
+      dateAdded: DateTime.parse(json['date_added'] as String),
     );
   }
 
@@ -47,7 +47,7 @@ class Song {
       'lyrics': lyrics,
       'duration': duration,
       'secondsListened': secondsListened,
-      'dateAdded': dateAdded,
+      'dateAdded': dateAdded.toIso8601String(),
     };
   }
 
@@ -59,7 +59,7 @@ class Song {
       album: map['album'],
       duration: map['duration'],
       secondsListened: map['secondsListened'],
-      dateAdded: map['dateAdded'],
+      dateAdded: DateTime.parse(map['dateAdded']),
     );
     if (map.containsKey('audioFilePath'))
       song.audioFilePath = map['audioFilePath'];
