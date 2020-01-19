@@ -1,4 +1,4 @@
-package com.example.player
+package com.mahmooz.music_player
 
 import androidx.annotation.NonNull;
 import io.flutter.embedding.android.FlutterActivity
