@@ -52,14 +52,12 @@ class MusicPlayer {
 
   void addToQueue(Song song) {
     bool emptyQueue = _queue.isEmpty;
-    _queue.add(song);
+    _queue.addLast(song);
     if (emptyQueue) {
       _playLocal(song.audioFilePath).then((whatever) {
           _playing = true;
           this._notifyPlaySongListeners(null, song);
       });
-    } else if (!_playing) {
-      this.resume();
     }
   }
 
