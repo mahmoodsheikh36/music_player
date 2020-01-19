@@ -14,10 +14,10 @@ final _IMAGE_FOLDER  = 'image';
 class SongProvider {
   Database db;
   bool _isNewDatabase = true;
+  List<Function> _onNewSongListeners = List<Function>();
 
   static Future<List<Song>> _fetchAllSongsMetadata() async {
-    final response =
-    await http.get('https://mahmoodsheikh.com/music/all_songs');
+    final response = await http.get('https://mahmoodsheikh.com/music/songs');
     return compute(_parseSongsMetadata, response.body);
   }
   static List<Song> _parseSongsMetadata(String responseBody) {
@@ -54,7 +54,9 @@ class SongProvider {
     );
   }
 
-  Future<void> open() async {
+  Future openDB() async {
+    if (db != null && db.isOpen)
+      return;
     final DATABASE_PATH = await Files.getAbsoluteFilePath('music.db');
     if (await databaseExists(DATABASE_PATH)) {
       _isNewDatabase = false;
@@ -70,6 +72,17 @@ class SongProvider {
         print('inserting song: ' + song.name);
         await insertSong(song);
       }
+    } else {
+      print('checking for new songs in remote library..');
+      _fetchNewSongsMetadata().then((List<Song> newSongs) {
+        print('new songs count: ' + newSongs.length.toString());
+        for (Song song in newSongs) {
+          print('new song ' + song.name);
+          insertSong(song).then((val) {
+            _notifyOnNewSongListeners(song);
+          });
+        }
+      });
     }
   }
 
@@ -203,5 +216,31 @@ class SongProvider {
   bool songAudioExistsLocally(Song song) {
     String localPath = _AUDIO_FOLDER + "/" + song.id.toString() + '.audio';
     return song.audioFilePath == localPath;
+  }
+
+  void addOnNewSongListener(Function listener) {
+    this._onNewSongListeners.add(listener);
+  }
+  void _notifyOnNewSongListeners(Song song) {
+    for (Function listener in _onNewSongListeners) {
+      listener(song);
+    }
+  }
+
+  Future<List<Song>> _fetchNewSongsMetadata() async {
+    List<Map<String, dynamic>> maps = (await db.query(
+      'songs',
+      columns: [
+        'id',
+      ],
+      orderBy: 'id DESC',
+      limit: 1,
+    ));
+
+    int lastSongId = maps[0]['id'];
+    print('lastSongId: ' + lastSongId.toString());
+    final response =
+      await http.get('https://mahmoodsheikh.com/music/songs?after_id=' + lastSongId.toString());
+    return compute(_parseSongsMetadata, response.body);
   }
 }
