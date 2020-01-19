@@ -14,7 +14,7 @@ class SongListWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return FutureBuilder<List<Song>>(
       future: _songProvider.open().then((val) {
-        return _songProvider.getAllSongs();
+        return _songProvider.getAllSongsSorted();
       }),
       builder: (context, snapshot) {
         if (snapshot.hasError) print(snapshot.error);
