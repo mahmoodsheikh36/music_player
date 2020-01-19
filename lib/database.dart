@@ -47,7 +47,8 @@ class SongProvider {
         songId INTEGER,
         startDate TEXT NOT NULL,
         endDate TEXT NOT NULL,
-        progressOnEnd REAL
+        progressOnEnd REAL,
+        progressOnStart REAL
       );
       '''
     );
