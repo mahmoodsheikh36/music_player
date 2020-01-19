@@ -126,6 +126,20 @@ class SongProvider {
     return songs;
   }
 
+  Future<List<Song>> getAllSongsSorted() async {
+    List<Song> songList = await getAllSongs();
+    for (int i = 0; i < songList.length; ++i) {
+      for (int j = i; j < songList.length; ++j) {
+        if (songList[i].dateAdded.isBefore(songList[j].dateAdded)) {
+          Song tmp = songList[i];
+          songList[i] = songList[j];
+          songList[j] = tmp;
+        }
+      }
+    }
+    return songList;
+  }
+
   /* shouldnt update all values at once unless necessary */
   Future<void> updateSong(Song song) async {
     return await db.update('songs', song.toMap(),
