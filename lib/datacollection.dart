@@ -32,7 +32,8 @@ class MusicMonitor {
       songId: songId,
       startDate: datetime,
       endDate: datetime,
-      progressOnEnd: -1
+      progressOnStart: _musicPlayer.progress,
+      progressOnEnd: -1,
     );
     await _songProvider.insertPlayback(playback);
   }
@@ -74,8 +75,10 @@ class Playback {
   String startDate;
   String endDate;
   double progressOnEnd;
+  double progressOnStart;
 
-  Playback({this.id, this.songId, this.startDate, this.endDate, this.progressOnEnd});
+  Playback({this.id, this.songId, this.startDate, this.endDate,
+            this.progressOnEnd, this.progressOnStart});
 
   Map<String, dynamic> toMap({bool withId = true}) {
     Map<String, dynamic> map = {
@@ -83,6 +86,7 @@ class Playback {
       'startDate': startDate,
       'endDate': endDate,
       'progressOnEnd': progressOnEnd,
+      'progressOnStart': progressOnStart
     };
     if (withId) {
       map['id'] = id;
@@ -96,7 +100,8 @@ class Playback {
       songId: map['songId'],
       startDate: map['startDate'],
       endDate: map['endDate'],
-      progressOnEnd: map['progressOnEnd']
+      progressOnEnd: map['progressOnEnd'],
+      progressOnStart: map['progressOnStart'],
     );
   }
 }
