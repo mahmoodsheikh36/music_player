@@ -13,7 +13,7 @@ class SongListWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Song>>(
-      future: _songProvider.open().then((val) {
+      future: _songProvider.openDB().then((val) {
         return _songProvider.getAllSongsSorted();
       }),
       builder: (context, snapshot) {
