@@ -222,7 +222,7 @@ class MusicPlayer {
   }
 
   bool hasNextSong() {
-    return _queue.isNotEmpty;
+    return _queue.length > 1;
   }
 
   /* current position in milliseconds */
