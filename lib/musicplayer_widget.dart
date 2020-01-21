@@ -8,37 +8,61 @@ import 'package:player/song.dart';
 
 import 'files.dart';
 
+final _DISABLED_PLAYBACK_BUTTON_COLOR = Colors.grey[600];
+final _ENABLED_PLAYBACK_BUTTON_COLOR = Colors.black;
+
 class MusicPlayerWidget extends StatefulWidget {
   final MusicPlayer _musicPlayer;
-  final SongProvider _songProvider;
+  final DbProvider _dbProvider;
 
-  MusicPlayerWidget(this._songProvider, this._musicPlayer);
+  MusicPlayerWidget(this._dbProvider, this._musicPlayer);
 
-  _MusicPlayerWidgetState createState() => _MusicPlayerWidgetState(_songProvider, _musicPlayer);
+  _MusicPlayerWidgetState createState() => _MusicPlayerWidgetState(_dbProvider, _musicPlayer);
 }
 
 class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
   final MusicPlayer _musicPlayer;
-  final SongProvider _songProvider;
+  final DbProvider _dbProvider;
 
-  void _onPlaySongListener(Song oldSong, Song newSong) {
+  bool _isPlayNextButtonEnabled;
+  bool _isPlayPrevButtonEnabled;
+
+  void _resetPlaybackButtons() {
+    if (_musicPlayer.hasNextSong() && _isPlayNextButtonEnabled)
+      return;
+    if (_musicPlayer.hasNextSong()) {
+      _isPlayNextButtonEnabled = true;
+      setState(() {
+      });
+    }
+  }
+
+  void _onPlayListener(Song newSong) {
+    _resetPlaybackButtons();
     setState(() {
-      /* just rebuild the widget */
     });
   }
 
-  _MusicPlayerWidgetState(this._songProvider, this._musicPlayer) {
-    _musicPlayer.addOnPlaySongListener(_onPlaySongListener);
+  void _onAddToQueueListener() {
+    _resetPlaybackButtons();
+  }
+
+  _MusicPlayerWidgetState(this._dbProvider, this._musicPlayer) {
+    _musicPlayer.addOnPlayListener(_onPlayListener);
+    _musicPlayer.addOnAddToQueueListener(_onAddToQueueListener);
+    _isPlayNextButtonEnabled = _musicPlayer.hasNextSong();
+    _isPlayPrevButtonEnabled = false;
   }
 
   @override
   void dispose() {
-    _musicPlayer.removeOnPlaySongListener(_onPlaySongListener);
+    _musicPlayer.removeOnPlayListener(_onPlayListener);
+    _musicPlayer.removeOnAddToQueueListener(_onAddToQueueListener);
     super.dispose();
   }
 
   Future<File> _getSongImageFile(Song song) async {
-    bool success = await _songProvider.prepareSongForPlayerPreview(song);
+    bool success = await _dbProvider.prepareSongForPlayerPreview(song);
     if (success)
       return File(await Files.getAbsoluteFilePath(song.imageFilePath));
     return null;
@@ -83,13 +107,23 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
               children: <Widget>[
                 IconButton(
                   tooltip: 'go back',
-                  icon: Icon(Icons.skip_previous),
+                  icon: Icon(
+                    Icons.skip_previous,
+                    color: _isPlayPrevButtonEnabled ?
+                    _ENABLED_PLAYBACK_BUTTON_COLOR :
+                    _DISABLED_PLAYBACK_BUTTON_COLOR,
+                  ),
                   iconSize: 35,
                 ),
                 _PlayPauseButton(_musicPlayer),
                 IconButton(
                   tooltip: 'skip',
-                  icon: Icon(Icons.skip_next),
+                  icon: Icon(
+                    Icons.skip_next,
+                    color: _isPlayNextButtonEnabled ?
+                    _ENABLED_PLAYBACK_BUTTON_COLOR :
+                    _DISABLED_PLAYBACK_BUTTON_COLOR,
+                  ),
                   iconSize: 35,
                 ),
               ],
@@ -119,15 +153,14 @@ class _ProgressIndicatorState extends State<_ProgressIndicator> with SingleTicke
 
   _ProgressIndicatorState(this._musicPlayer);
 
-  Future<void> _onPlaySongListener(Song oldSong, Song newSong) async {
+  Future _onPlaySongListener(Song newSong) async {
     _controller.duration = new Duration(seconds: newSong.duration);
     // _controller..forward(from: 0);
   }
 
-  Future<void> _onProgressListener(double oldProgress,
-                                   double newProgress,
-                                   bool   seekedPosition) {
-    _controller.value = newProgress / _musicPlayer.currentSong.duration;
+  void _onPositionChangeListener(Duration duration) {
+    _controller.value = (duration.inMilliseconds / 1000)
+                        / _musicPlayer.currentSong.duration;
   }
 
   @override
@@ -140,6 +173,11 @@ class _ProgressIndicatorState extends State<_ProgressIndicator> with SingleTicke
       animationBehavior: AnimationBehavior.preserve,
     );//..forward(from: _musicPlayer.progress / _musicPlayer.currentSong.duration);
 
+    /* invoke the on position change manually because musicPlayer wont do it */
+    _musicPlayer.getCurrentPosition().then((int milliseconds) {
+      _onPositionChangeListener(Duration(milliseconds: milliseconds));
+    });
+
     _animation = CurvedAnimation(
       parent: _controller,
       curve: Curves.linear,
@@ -150,14 +188,14 @@ class _ProgressIndicatorState extends State<_ProgressIndicator> with SingleTicke
         _controller.reset();
     });
 
-    _musicPlayer.addOnPlaySongListener(_onPlaySongListener);
-    _musicPlayer.addOnProgressListener(_onProgressListener);
+    _musicPlayer.addOnPlayListener(_onPlaySongListener);
+    _musicPlayer.addOnPositionChangeListener(_onPositionChangeListener);
   }
 
   @override
   void dispose() {
-    _musicPlayer.removeOnPlaySongListener(_onPlaySongListener);
-    _musicPlayer.removeOnProgressListener(_onProgressListener);
+    _musicPlayer.removeOnPlayListener(_onPlaySongListener);
+    _musicPlayer.removeOnPositionChangeListener(_onPositionChangeListener);
     _controller.stop();
     super.dispose();
   }
@@ -214,7 +252,7 @@ class _PlayPauseButtonState extends State<_PlayPauseButton> {
   IconData _playPause;
 
   void _toggle() {
-    bool playing = _musicPlayer.playing;
+    bool playing = _musicPlayer.isPlaying();
     if (playing) {
       _playPause = Icons.play_arrow;
       _musicPlayer.pause();
@@ -226,7 +264,7 @@ class _PlayPauseButtonState extends State<_PlayPauseButton> {
   }
 
   _PlayPauseButtonState(this._musicPlayer) {
-    _playPause = _musicPlayer.playing ? Icons.pause : Icons.play_arrow;
+    _playPause = _musicPlayer.isPlaying() ? Icons.pause : Icons.play_arrow;
   }
 
   @override
