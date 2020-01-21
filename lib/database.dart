@@ -17,8 +17,13 @@ class DbProvider {
   List<Function> _onNewSongListeners = List<Function>();
 
   static Future<List<Song>> _fetchAllSongsMetadata() async {
-    final response = await http.get('https://mahmoodsheikh.com/music/songs');
-    return compute(_parseSongsMetadata, response.body);
+    try {
+      final response = await http.get('https://mahmoodsheikh.com/music/songs');
+      return compute(_parseSongsMetadata, response.body);
+    } on SocketException catch (_) {
+      print('no internet connection');
+      return [];
+    }
   }
   static List<Song> _parseSongsMetadata(String responseBody) {
     final parsed = jsonDecode(responseBody).cast<Map<String, dynamic>>();
@@ -36,7 +41,6 @@ class DbProvider {
         imageFilePath TEXT,
         lyrics TEXT,
         duration int,
-        secondsListened REAL,
         dateAdded TEXT NOT NULL
       );
       '''
@@ -63,9 +67,9 @@ class DbProvider {
     await db.execute('''
       CREATE TABLE resumes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        pauseId INTEGER,
+        playbackId INTEGER,
         timestamp int,
-        FOREIGN KEY(pauseId) REFERENCES pauses(id)
+        FOREIGN KEY(playbackId) REFERENCES playbacks(id)
       );
       '''
     );
@@ -266,8 +270,12 @@ class DbProvider {
       orderBy: 'id DESC',
       limit: 1,
     ));
+    int lastSongId;
+    if (maps.length == 0)
+      lastSongId = -1; /* -1 will result in all songs being refetched */
+    else
+      lastSongId = maps[0]['id'];
 
-    int lastSongId = maps[0]['id'];
     print('lastSongId: ' + lastSongId.toString());
     final response =
       await http.get('https://mahmoodsheikh.com/music/songs?after_id=' + lastSongId.toString());
@@ -281,15 +289,11 @@ class DbProvider {
     });
   }
 
-  Future insertResume(int pauseId, int timestamp) async {
+  Future insertResume(int playbackId, int timestamp) async {
     await db.insert('resumes', <String, dynamic>{
-      'pauseId': pauseId,
+      'playbackId': playbackId,
       'timestamp': timestamp
     });
-  }
-
-  Future<int> getLastPauseId() async {
-    return await _getLastAutoId('pauses');
   }
 
   Future insertSeek(int playbackId, double position, int timestamp) async {
@@ -298,5 +302,33 @@ class DbProvider {
       'position': position,
       'timestamp': timestamp
     });
+  }
+
+  Future<List<Playback>> getPlaybacksForSong(int songId) async {
+    List<Map> maps = (await db.query(
+      'playbacks',
+      columns: null,
+      where: 'songId = ?',
+      whereArgs: [songId]
+    ));
+    List<Playback> playbacks = List<Playback>();
+    for (Map map in maps) {
+      playbacks.add(Playback.fromMap(map));
+    }
+    return playbacks;
+  }
+
+  Future<List<int>> getPausesForPlayback(int playbackId) async {
+    List<Map> maps = (await db.query(
+      'pauses',
+      columns: ['timestamp'],
+      where: 'playbackId = ?',
+      whereArgs: [playbackId]
+    ));
+    List<int> pauseTimestamps = List<int>();
+    for (Map map in maps) {
+      pauseTimestamps.add(map['timestamp']);
+    }
+    return pauseTimestamps;
   }
 }
