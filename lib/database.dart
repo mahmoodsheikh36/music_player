@@ -8,10 +8,10 @@ import 'files.dart';
 import 'song.dart';
 import 'datacollection.dart';
 
-final _AUDIO_FOLDER  = 'audio';
-final _IMAGE_FOLDER  = 'image';
+const _AUDIO_FOLDER  = 'audio';
+const _IMAGE_FOLDER  = 'image';
 
-class SongProvider {
+class DbProvider {
   Database db;
   bool _isNewDatabase = true;
   List<Function> _onNewSongListeners = List<Function>();
@@ -45,16 +45,43 @@ class SongProvider {
       CREATE TABLE playbacks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         songId INTEGER,
-        startDate TEXT NOT NULL,
-        endDate TEXT NOT NULL,
-        progressOnEnd REAL,
-        progressOnStart REAL
+        startTimestamp int,
+        endTimestamp int,
+        FOREIGN KEY (songId) REFERENCES songs (id)
+      );
+      '''
+    );
+    await db.execute('''
+      CREATE TABLE pauses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        playbackId INTEGER,
+        timestamp int,
+        FOREIGN KEY(playbackId) REFERENCES playbacks(id)
+      );
+      '''
+    );
+    await db.execute('''
+      CREATE TABLE resumes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pauseId INTEGER,
+        timestamp int,
+        FOREIGN KEY(pauseId) REFERENCES pauses(id)
+      );
+      '''
+    );
+    await db.execute('''
+      CREATE TABLE seeks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        playbackId INTEGER,
+        timestamp int,
+        position REAL,
+        FOREIGN KEY(playbackId) REFERENCES playbacks(id)
       );
       '''
     );
   }
 
-  Future openDB() async {
+  Future openDb() async {
     if (db != null && db.isOpen)
       return;
     final DATABASE_PATH = await Files.getAbsoluteFilePath('music.db');
@@ -91,22 +118,25 @@ class SongProvider {
   }
 
   Future insertPlayback(Playback playback) async {
-    await db.insert('playbacks', playback.toMap(withId: false));
+    await db.insert('playbacks', playback.toMap());
+  }
+
+  Future<int> _getLastAutoId(String tableName) async {
+    List<Map<String, dynamic>> maps = (await db.query(
+    'sqlite_sequence',
+    columns: [
+        'seq',
+        ],
+        where: 'name = ?',
+        whereArgs: [tableName],
+    ));
+    if (maps.length == 0)
+      return null;
+    return maps[0]['seq'];
   }
 
   Future<Playback> getLastPlayback() async {
-    List<Map<String, dynamic>> maps = (await db.query(
-      'sqlite_sequence',
-      columns: [
-        'seq',
-      ],
-      where: 'name = ?',
-      whereArgs: ['playbacks'],
-    ));
-    if (maps.length == 0)
-        return null;
-
-    int lastPlaybackId = maps[0]['seq'];
+    int lastPlaybackId = await _getLastAutoId('playbacks');
     return Playback.fromMap((await db.query(
         'playbacks',
         columns: null,
@@ -242,5 +272,31 @@ class SongProvider {
     final response =
       await http.get('https://mahmoodsheikh.com/music/songs?after_id=' + lastSongId.toString());
     return compute(_parseSongsMetadata, response.body);
+  }
+
+  Future insertPause(int playbackId, int timestamp) async {
+    await db.insert('pauses', <String, dynamic>{
+      'playbackId': playbackId,
+      'timestamp': timestamp
+    });
+  }
+
+  Future insertResume(int pauseId, int timestamp) async {
+    await db.insert('resumes', <String, dynamic>{
+      'pauseId': pauseId,
+      'timestamp': timestamp
+    });
+  }
+
+  Future<int> getLastPauseId() async {
+    return await _getLastAutoId('pauses');
+  }
+
+  Future insertSeek(int playbackId, double position, int timestamp) async {
+    await db.insert('seeks', <String, dynamic>{
+      'playbackId': playbackId,
+      'position': position,
+      'timestamp': timestamp
+    });
   }
 }
