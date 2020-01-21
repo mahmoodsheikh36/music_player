@@ -32,15 +32,15 @@ class MusicMonitor {
   void _onPauseListener() {
     _dbProvider.getLastPlayback().then((Playback lastPlayback) {
       _dbProvider.insertPause(lastPlayback.id,
-                                DateTime.now().millisecondsSinceEpoch);
+                              DateTime.now().millisecondsSinceEpoch);
       print('datacollection: inserted pause');
     });
   }
 
   void _onResumeListener() {
-    _dbProvider.getLastPauseId().then((int lastPauseId) {
-      _dbProvider.insertResume(lastPauseId,
-          DateTime.now().millisecondsSinceEpoch);
+    _dbProvider.getLastPlayback().then((Playback lastPlayback) {
+      _dbProvider.insertResume(lastPlayback.id,
+                               DateTime.now().millisecondsSinceEpoch);
       print('datacollection: inserted resume');
     });
   }
