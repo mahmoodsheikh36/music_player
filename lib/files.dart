@@ -20,6 +20,7 @@ class Files {
     var request = await http.get(url,);
     var bytes = request.bodyBytes;
     await file.writeAsBytes(bytes);
+    print('downloaded to ' + localPath);
   }
 
   static Future<String> getAbsoluteFilePath(String path) async {
