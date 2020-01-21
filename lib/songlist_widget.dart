@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:player/dataanalysis.dart';
 
 import 'musicplayer.dart';
 import 'song.dart';
@@ -27,11 +28,14 @@ class SongListWidget extends StatelessWidget {
               return InkWell(
                 onTap: () {
                   Song song = snapshot.data[index];
+                  getSecondsListenedToSong(_dbProvider, song.id).then((double seconds) {
+                    print('seconds listened to song: ' + seconds.toString());
+                  });
                   if (_dbProvider.songAudioExistsLocally(song)) {
                     _musicPlayer.play(song);
                   } else {
                     _dbProvider.prepareSongForPlaying(song).then((bool success) {
-                        if (success) {
+                      if (success) {
                           _musicPlayer.addToQueue(song);
                           print('added \'' + song.name + '\' to queue');
                         } else {
