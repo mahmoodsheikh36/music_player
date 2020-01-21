@@ -47,10 +47,12 @@ class MusicPlayer {
     _queue.addLast(song);
     if (emptyQueue) {
       _playLocal(song.audioFilePath).then((whatever) {
-          this._notifyOnPlayListeners(song);
+        _notifyOnAddToQueueListeners();
+        this._notifyOnPlayListeners(song);
       });
+    } else {
+      _notifyOnAddToQueueListeners();
     }
-    _notifyOnAddToQueueListeners();
   }
 
   Future<void> skip() async {
