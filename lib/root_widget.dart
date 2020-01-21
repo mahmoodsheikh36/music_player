@@ -8,31 +8,31 @@ import 'datacollection.dart';
 
 class Root extends StatefulWidget {
   final MusicPlayer _musicPlayer = new MusicPlayer();
-  final SongProvider _songProvider = new SongProvider();
+  final DbProvider _dbProvider = new DbProvider();
   MusicMonitor _musicMonitor;
 
   Root() {
-    // songProvider.open(); /* open the database asynchronously */
-    _musicMonitor = new MusicMonitor(_songProvider, _musicPlayer);
+    // dbProvider.open(); /* open the database asynchronously */
+    _musicMonitor = new MusicMonitor(_dbProvider, _musicPlayer);
   }
 
   @override
-  _RootState createState() { return _RootState(_songProvider, _musicPlayer); }
+  _RootState createState() { return _RootState(_dbProvider, _musicPlayer); }
 }
 
 class _RootState extends State<Root> {
   int _currentIndex = 0;
   MusicPlayer _musicPlayer;
-  SongProvider _songProvider;
+  DbProvider _dbProvider;
   List<Widget> _children = [];
 
-  _RootState(this._songProvider, this._musicPlayer) {
+  _RootState(this._dbProvider, this._musicPlayer) {
     _children = [
       SafeArea(
-          child: SongListWidget(_songProvider, _musicPlayer),
+          child: SongListWidget(_dbProvider, _musicPlayer),
       ),
       SafeArea(
-        child: MusicPlayerWidget(_songProvider, _musicPlayer),
+        child: MusicPlayerWidget(_dbProvider, _musicPlayer),
       ),
       PlaceholderWidget(Colors.green)
     ];
