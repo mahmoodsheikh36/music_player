@@ -7,14 +7,10 @@ import 'songlist_widget.dart';
 import 'datacollection.dart';
 
 class Root extends StatefulWidget {
-  final MusicPlayer _musicPlayer = new MusicPlayer();
-  final DbProvider _dbProvider = new DbProvider();
-  MusicMonitor _musicMonitor;
+  MusicPlayer _musicPlayer;
+  DbProvider _dbProvider;
 
-  Root() {
-    // dbProvider.open(); /* open the database asynchronously */
-    _musicMonitor = new MusicMonitor(_dbProvider, _musicPlayer);
-  }
+  Root(this._dbProvider, this._musicPlayer);
 
   @override
   _RootState createState() { return _RootState(_dbProvider, _musicPlayer); }
@@ -29,7 +25,7 @@ class _RootState extends State<Root> {
   _RootState(this._dbProvider, this._musicPlayer) {
     _children = [
       SafeArea(
-          child: SongListWidget(_dbProvider, _musicPlayer),
+        child: SongListWidget(_dbProvider, _musicPlayer),
       ),
       SafeArea(
         child: MusicPlayerWidget(_dbProvider, _musicPlayer),
