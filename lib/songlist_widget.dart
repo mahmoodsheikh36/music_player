@@ -6,15 +6,15 @@ import 'database.dart';
 
 class SongListWidget extends StatelessWidget {
   final MusicPlayer _musicPlayer;
-  final SongProvider _songProvider;
+  final DbProvider _dbProvider;
 
-  SongListWidget(this._songProvider, this._musicPlayer);
+  SongListWidget(this._dbProvider, this._musicPlayer);
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Song>>(
-      future: _songProvider.openDB().then((val) {
-        return _songProvider.getAllSongsSorted();
+      future: _dbProvider.openDb().then((val) {
+        return _dbProvider.getAllSongsSorted();
       }),
       builder: (context, snapshot) {
         if (snapshot.hasError) print(snapshot.error);
@@ -27,10 +27,10 @@ class SongListWidget extends StatelessWidget {
               return InkWell(
                 onTap: () {
                   Song song = snapshot.data[index];
-                  if (_songProvider.songAudioExistsLocally(song)) {
+                  if (_dbProvider.songAudioExistsLocally(song)) {
                     _musicPlayer.play(song);
                   } else {
-                    _songProvider.prepareSongForPlaying(song).then((bool success) {
+                    _dbProvider.prepareSongForPlaying(song).then((bool success) {
                         if (success) {
                           _musicPlayer.addToQueue(song);
                           print('added \'' + song.name + '\' to queue');
@@ -40,7 +40,7 @@ class SongListWidget extends StatelessWidget {
                         }
                     });
                   }
-                  // _songProvider.prepareSongForPlayerPreview(song);
+                  // _dbProvider.prepareSongForPlayerPreview(song);
                 },
                 child: Row(
                   children: [
