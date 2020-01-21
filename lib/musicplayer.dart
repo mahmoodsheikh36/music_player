@@ -1,7 +1,5 @@
 import 'dart:collection';
-
-import 'package:audioplayer/audioplayer.dart';
-import 'package:player/database.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 import 'song.dart';
 import 'files.dart';
@@ -9,19 +7,19 @@ import 'files.dart';
 class MusicPlayer {
   // typedef Listener = void Function(double previous, double current, bool seekedPosition);
   final AudioPlayer _audioPlayer = AudioPlayer();
-  final List<Function> _onPlaySongListeners = List<Function>();
-  final List<Function> _onProgressListeners = List<Function>();
+  final List<Function> _onPlayListeners = List<Function>();
+  final List<Function> _onPositionChangeListeners = List<Function>();
   final List<Function> _onPauseListeners = List<Function>();
   final List<Function> _onResumeListeners = List<Function>();
+  final List<Function> _onSkipListeners = List<Function>();
+  final List<Function> _onCompleteListeners = List<Function>();
+  final List<Function> _onSeekListeners = List<Function>();
+  final List<Function> _onAddToQueueListeners = List<Function>();
   final Queue<Song> _queue = Queue();
-  double _progress = 0;
-  bool _playing = false;
 
   MusicPlayer() {
-    _audioPlayer.onAudioPositionChanged.listen((Duration progress) {
-      double newProgress = progress.inMilliseconds / 1000.0;
-      _notifyOnProgressListeners(_progress, newProgress, false);
-      _progress = newProgress;
+    _audioPlayer.onAudioPositionChanged.listen((Duration position) {
+      _notifyOnPositionChangeListeners(position);
     });
 
     _audioPlayer.onPlayerStateChanged.listen((AudioPlayerState state) {
@@ -29,14 +27,8 @@ class MusicPlayer {
       switch (state) {
         case AudioPlayerState.COMPLETED:
           _onSongComplete();
-          _playing = false;
           break;
-        case AudioPlayerState.PLAYING:
-          _playing = true;
-          break;
-        case AudioPlayerState.STOPPED:
-        case AudioPlayerState.PAUSED:
-          _playing = false;
+        default:
           break;
       }
     });
@@ -55,87 +47,79 @@ class MusicPlayer {
     _queue.addLast(song);
     if (emptyQueue) {
       _playLocal(song.audioFilePath).then((whatever) {
-          _playing = true;
-          this._notifyPlaySongListeners(null, song);
+          this._notifyOnPlayListeners(song);
       });
     }
+    _notifyOnAddToQueueListeners();
   }
 
   Future<void> skip() async {
     await _audioPlayer.stop();
-    _progress = 0;
     Song skippedSong = _queue.removeFirst();
     if (_queue.isEmpty) {
       _queue.addFirst(skippedSong);
     }
+    _notifyOnSkipListeners(_queue.first);
     await _playLocal(_queue.first.audioFilePath);
-    _notifyPlaySongListeners(skippedSong, _queue.first);
+    _notifyOnPlayListeners(_queue.first);
   }
 
   Future<void> play(Song song) async {
-    await _audioPlayer.stop();
-    _progress = 0;
-    Song skippedSong;
-    if (!_queue.isEmpty)
-      skippedSong = _queue.removeFirst();
+    if (_queue.isNotEmpty) {
+      await _audioPlayer.stop();
+      _queue.removeFirst();
+    }
     _queue.addFirst(song);
     await _playLocal(song.audioFilePath);
-    _notifyPlaySongListeners(skippedSong, song);
+    _notifyOnPlayListeners(song);
   }
 
   Future<void> resume() async {
     Song songToResume = _queue.first;
     await _playLocal(songToResume.audioFilePath);
-    _playing = true;
     _notifyOnResumeListeners();
   }
 
   Future<void> pause() async {
     await _audioPlayer.pause();
-    _playing = false;
     _notifyOnPauseListeners();
   }
 
-  Future<void> _seekPosition(double seconds) async {
-    print('seeked position ' + seconds.toString());
-    await _audioPlayer.seek(seconds);
-    _notifyOnProgressListeners(_progress, seconds, true);
-    _progress = seconds;
+  Future<void> _seekDuration(Duration duration) async {
+    print('seeked duration ' + duration.toString());
+    await _audioPlayer.seek(duration);
+    _notifyOnSeekListeners(duration);
   }
 
   Future<void> seekPercentage(double percentage) async {
     percentage = percentage < 0 ? 0 : percentage > 100 ? 100 : percentage;
-    double position = _queue.first.duration * (percentage / 100);
-    await _seekPosition(position);
+    double seconds = _queue.first.duration * (percentage / 100);
+    int milliSeconds = ((seconds * 1000) % 1000).toInt();
+    await _seekDuration(Duration(seconds: seconds.toInt(),
+                                 milliseconds: milliSeconds));
   }
 
-  Stream<AudioPlayerState> onPlayerStateChanged() {
-    return _audioPlayer.onPlayerStateChanged;
+  void addOnPlayListener(Function listener) {
+    this._onPlayListeners.add(listener);
   }
-
-  void addOnPlaySongListener(Function listener) {
-    this._onPlaySongListeners.add(listener);
+  void removeOnPlayListener(Function listener) {
+    this._onPlayListeners.remove(listener);
   }
-  void removeOnPlaySongListener(Function listener) {
-    this._onPlaySongListeners.remove(listener);
-  }
-  void _notifyPlaySongListeners(Song oldSong, Song newSong) {
-    for (Function listener in _onPlaySongListeners) {
-      listener(oldSong, newSong);
+  void _notifyOnPlayListeners(Song song) {
+    for (Function listener in _onPlayListeners) {
+      listener(song);
     }
   }
 
-  void addOnProgressListener(Function listener) {
-    this._onProgressListeners.add(listener);
+  void addOnPositionChangeListener(Function listener) {
+    this._onPositionChangeListeners.add(listener);
   }
-  void removeOnProgressListener(Function listener) {
-    this._onProgressListeners.remove(listener);
+  void removeOnPositionChangeListener(Function listener) {
+    this._onPositionChangeListeners.remove(listener);
   }
-  void _notifyOnProgressListeners(double previousProgress,
-                                  double currentProgress,
-                                  bool   seekedPosition) {
-    for (Function listener in _onProgressListeners) {
-      listener(previousProgress, currentProgress, seekedPosition);
+  void _notifyOnPositionChangeListeners(Duration newPosition) {
+    for (Function listener in _onPositionChangeListeners) {
+      listener(newPosition);
     }
   }
 
@@ -164,18 +148,67 @@ class MusicPlayer {
     }
   }
 
+  void addOnCompleteListener(Function listener) {
+    this._onCompleteListeners.add(listener);
+  }
+  void removeOnCompleteListener(Function listener) {
+    this._onCompleteListeners.remove(listener);
+  }
+  void _notifyOnCompleteListeners() {
+    for (Function listener in _onCompleteListeners) {
+      listener();
+    }
+  }
+
+  void addOnSkipListener(Function listener) {
+    this._onSkipListeners.add(listener);
+  }
+  void removeOnSkipListener(Function listener) {
+    this._onSkipListeners.remove(listener);
+  }
+  void _notifyOnSkipListeners(Song newSong) {
+    for (Function listener in _onSkipListeners) {
+      listener(newSong);
+    }
+  }
+
+  void addOnSeekListener(Function listener) {
+    this._onSeekListeners.add(listener);
+  }
+  void removeOnSeekListener(Function listener) {
+    this._onSeekListeners.remove(listener);
+  }
+  void _notifyOnSeekListeners(Duration newDuration) {
+    for (Function listener in _onSeekListeners) {
+      listener(newDuration);
+    }
+  }
+
+  void addOnAddToQueueListener(Function listener) {
+    this._onAddToQueueListeners.add(listener);
+  }
+  void removeOnAddToQueueListener(Function listener) {
+    this._onAddToQueueListeners.remove(listener);
+  }
+  void _notifyOnAddToQueueListeners() {
+    for (Function listener in _onAddToQueueListeners) {
+      listener();
+    }
+  }
+
   Future<void> _onSongComplete() async {
     await _audioPlayer.stop();
-    _progress = 0;
     Song removedSong = _queue.removeFirst();
     if (_queue.isNotEmpty) {
+      _notifyOnCompleteListeners();
       await _playLocal(_queue.first.audioFilePath);
-      _notifyPlaySongListeners(removedSong, _queue.first);
     } else {
       print('queue empty after complete, replaying last song');
       _queue.addFirst(removedSong);
+      _notifyOnCompleteListeners();
       await _playLocal(removedSong.audioFilePath);
     }
+    _notifyOnPlayListeners(_queue.first);
   }
 
   Song get currentSong {
@@ -184,11 +217,16 @@ class MusicPlayer {
     return _queue.first;
   }
 
-  double get progress {
-    return _progress;
+  bool isPlaying() {
+    return _audioPlayer.state == AudioPlayerState.PLAYING;
   }
 
-  bool get playing {
-    return _playing;
+  bool hasNextSong() {
+    return _queue.isNotEmpty;
+  }
+
+  /* current position in milliseconds */
+  Future<int> getCurrentPosition() async {
+    return await _audioPlayer.getCurrentPosition();
   }
 }
