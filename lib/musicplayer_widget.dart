@@ -30,11 +30,7 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
   void _resetPlaybackButtons() {
     if (_musicPlayer.hasNextSong() && _isPlayNextButtonEnabled)
       return;
-    if (_musicPlayer.hasNextSong()) {
-      _isPlayNextButtonEnabled = true;
-      setState(() {
-      });
-    }
+    _isPlayNextButtonEnabled = _musicPlayer.hasNextSong();
   }
 
   void _onPlayListener(Song newSong) {
@@ -45,6 +41,8 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
 
   void _onAddToQueueListener() {
     _resetPlaybackButtons();
+    setState(() {
+    });
   }
 
   _MusicPlayerWidgetState(this._dbProvider, this._musicPlayer) {
@@ -118,6 +116,11 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                 _PlayPauseButton(_musicPlayer),
                 IconButton(
                   tooltip: 'skip',
+                  onPressed: () {
+                    if (_isPlayNextButtonEnabled) {
+                      _musicPlayer.skip();
+                    }
+                  },
                   icon: Icon(
                     Icons.skip_next,
                     color: _isPlayNextButtonEnabled ?
