@@ -112,7 +112,6 @@ class DbProvider {
       }
     } else {
       print('checking for new songs in remote library..');
-      /*
       _fetchNewSongsMetadata().then((List<Song> newSongs) {
         print('new songs count: ' + newSongs.length.toString());
         for (Song song in newSongs) {
@@ -122,7 +121,6 @@ class DbProvider {
           });
         }
       });
-          */
     }
   }
 
@@ -337,7 +335,12 @@ class DbProvider {
 
     print('lastSongId: ' + lastSongId.toString());
     final response =
-      await http.get('https://mahmoodsheikh.com/music/songs?after_id=' + lastSongId.toString());
+    await http.post(
+      'https://mahmoodsheikh.com/music/songs?after_id=' + lastSongId.toString(),
+        body: {
+          'username': 'mahmooz'
+        }
+    );
     return compute(_parseSongsMetadata, response.body);
   }
 
