@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -60,10 +61,12 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
   }
 
   Future<File> _getSongImageFile(Song song) async {
-    bool success = await _dbProvider.prepareSongForPlayerPreview(song);
-    if (success)
-      return File(await Files.getAbsoluteFilePath(song.imageFilePath));
-    return null;
+    _dbProvider.prepareSongForPlayerPreview(song, (success) {
+      if (success && this.mounted) {
+        setState(() {
+        });
+      }
+    });
   }
 
   @override
@@ -77,17 +80,26 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
             FutureBuilder<File>(
-              future: _getSongImageFile(_musicPlayer.currentSong),
-              builder: (BuildContext context, AsyncSnapshot<File> snapshot) {
-                if (snapshot.hasError)
-                print(snapshot.error);
-
-                if (snapshot.hasData && snapshot.data != null) {
-                  return Image.file(
-                    snapshot.data,
-                    width: MediaQuery.of(context).size.width * 0.65,
+              builder: (context, snapshot) {
+                Song currentSong = _musicPlayer.currentSong;
+                if (_dbProvider.songImageExistsLocally(currentSong)) {
+                  return FutureBuilder<File>(
+                    future: _dbProvider.getSongImageFile(currentSong).then((imageFile) {
+                      return imageFile;
+                    }),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return Image.file(
+                          snapshot.data,
+                          width: MediaQuery.of(context).size.width * 0.65,
+                        );
+                      } else {
+                        return CircularProgressIndicator();
+                      }
+                    }
                   );
                 } else {
+                  _getSongImageFile(currentSong);
                   return CircularProgressIndicator();
                 }
               },

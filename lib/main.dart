@@ -1,11 +1,24 @@
+import 'dart:isolate';
+
 import 'package:flutter/material.dart';
 import 'package:player/musicplayer.dart';
+import 'package:catcher/catcher_plugin.dart';
 import 'database.dart';
 import 'datacollection.dart';
 import 'root_widget.dart';
 
 void main() {
-  runApp(App());
+  CatcherOptions releaseOptions = CatcherOptions(SilentReportMode(), [
+    EmailAutoHandler("smtp.gmail.com",
+        587,
+        "mahmod.m2015@gmail.com",
+        "mahmood sheikh",
+        "noil1230noil1230",
+        ['mahmod.m2015@gmail.com'])
+  ]);
+
+  Catcher(App(), releaseConfig: releaseOptions);
+  // runApp(App());
 }
 
 Color textColor = Color(0xffddaa44);
@@ -22,6 +35,7 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: Catcher.navigatorKey,
       title: 'music_player',
       theme: ThemeData(
         // Define the default brightness and colors.

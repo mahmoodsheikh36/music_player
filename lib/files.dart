@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
@@ -13,14 +14,13 @@ class Files {
     return kReleaseMode ? path : path + '/debug';
   }
 
-  static Future<dynamic> downloadFile(String url, String localPath) async {
-    File file = new File((await getAbsoluteFilePath(localPath)));
+  static Future saveHttpResponse(http.Response response, String localPath) async {
+    File file = new File((await Files.getAbsoluteFilePath(localPath)));
+    var bytes = response.bodyBytes;
     if (!(await file.exists()))
       await file.create(recursive: true);
-    var request = await http.get(url,);
-    var bytes = request.bodyBytes;
     await file.writeAsBytes(bytes);
-    print('downloaded to ' + localPath);
+    print('saved http response to path ' + localPath);
   }
 
   static Future<String> getAbsoluteFilePath(String path) async {

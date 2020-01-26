@@ -7,6 +7,7 @@ import 'package:sqflite/sqflite.dart';
 import 'files.dart';
 import 'song.dart';
 import 'datacollection.dart';
+import 'functionqueue.dart';
 
 const _AUDIO_FOLDER  = 'audio';
 const _IMAGE_FOLDER  = 'image';
@@ -15,10 +16,16 @@ class DbProvider {
   Database db;
   bool _isNewDatabase = true;
   List<Function> _onNewSongListeners = List<Function>();
+  FunctionQueue _httpRequestFunctionQueue = FunctionQueue();
 
   static Future<List<Song>> _fetchAllSongsMetadata() async {
     try {
-      final response = await http.get('https://mahmoodsheikh.com/music/songs');
+      final response = await http.post(
+        'https://mahmoodsheikh.com/music/songs',
+        body: {
+          'username': 'mahmooz'
+        }
+      );
       return compute(_parseSongsMetadata, response.body);
     } on SocketException catch (_) {
       print('no internet connection');
@@ -41,7 +48,7 @@ class DbProvider {
         imageFilePath TEXT,
         lyrics TEXT,
         duration int,
-        dateAdded TEXT NOT NULL
+        dateAdded int NOT NULL
       );
       '''
     );
@@ -105,6 +112,7 @@ class DbProvider {
       }
     } else {
       print('checking for new songs in remote library..');
+      /*
       _fetchNewSongsMetadata().then((List<Song> newSongs) {
         print('new songs count: ' + newSongs.length.toString());
         for (Song song in newSongs) {
@@ -114,6 +122,7 @@ class DbProvider {
           });
         }
       });
+          */
     }
   }
 
@@ -177,7 +186,7 @@ class DbProvider {
     List<Song> songList = await getAllSongs();
     for (int i = 0; i < songList.length; ++i) {
       for (int j = i; j < songList.length; ++j) {
-        if (songList[i].dateAdded.isBefore(songList[j].dateAdded)) {
+        if (songList[i].dateAdded < songList[j].dateAdded) {
           Song tmp = songList[i];
           songList[i] = songList[j];
           songList[j] = tmp;
@@ -207,49 +216,99 @@ class DbProvider {
       where: 'id = ?', whereArgs: [playback.id]);
   }
 
-  Future<bool> _downloadSongAudio(Song song) async {
+  void _downloadSongAudio(Song song, Function callback) {
     String localPath = _AUDIO_FOLDER + '/' + song.id.toString() + '.audio';
     if (song.audioFilePath == localPath)
-      return true;
-    bool success = false;
-    await Files.downloadFile('https://mahmoodsheikh.com/music/get_song_audio_file/' + song.id.toString(), localPath).then((val) {
+      callback(true);
+    if (_httpRequestFunctionQueue.hasEntryWithId(localPath)) {
+      callback(false);
+      return;
+    }
+    _httpRequestFunctionQueue.add((functionQueueCallback) async {
+      final response = await http.post(
+        'https://mahmoodsheikh.com/music/audio?song_id=' + song.id.toString(),
+        body: {
+          'username': 'mahmooz'
+        }
+      );
+      await Files.saveHttpResponse(response, localPath);
       song.audioFilePath = localPath;
-      success = true;
-    }).catchError((error) { print(error); });
-    return success;
+      callback(true);
+      functionQueueCallback();
+      print('downloaded audio for song ' + song.name);
+    }, id: localPath);
   }
 
-  Future<bool> _downloadSongImage(Song song) async {
+  void _downloadSongImage(Song song, Function callback) {
     String localPath = _IMAGE_FOLDER + "/" + song.id.toString() + '.img';
-    if (song.imageFilePath == localPath)
-      return true;
-    bool success = false;
-    await Files.downloadFile('https://mahmoodsheikh.com/music/get_song_image_file/' + song.id.toString(), localPath).then((val) {
+    if (song.imageFilePath == localPath) {
+      callback(true);
+      return;
+    }
+    if (_httpRequestFunctionQueue.hasEntryWithId(localPath)) {
+      print('rejecting image download request');
+      callback(false);
+      return;
+    }
+    print('downloading image...');
+    _httpRequestFunctionQueue.add((functionQueueCallback) async {
+      final response = await http.post(
+        'https://mahmoodsheikh.com/music/image?song_id=' + song.id.toString(),
+        body: {
+          'username': 'mahmooz'
+        }
+      );
+      await Files.saveHttpResponse(response, localPath);
       song.imageFilePath = localPath;
-      success = true;
-    }).catchError((error) { print(error); });
-    return success;
+      callback(true);
+      functionQueueCallback();
+      print('downloaded image for song ' + song.name);
+    }, id: localPath);
   }
 
-  Future<bool> prepareSongForPlaying(Song song) async {
+  void prepareSongForPlaying(Song song, Function callback) {
     print('preparing song \'' + song.name + '\' for playing');
-    bool success = await _downloadSongAudio(song);
-    if (success) await this.updateSongColumns(song,
-      <String, String>{'audioFilePath': song.audioFilePath});
-    return success;
+    _downloadSongAudio(song, (success) {
+      if (success) {
+        this.updateSongColumns(song,
+          <String, String>{
+            'audioFilePath': song.audioFilePath
+          }).then((whatever) {
+            callback(success);
+          });
+      } else {
+        callback(success);
+      }
+    });
   }
 
-  Future<bool> prepareSongForPlayerPreview(Song song) async {
+  void prepareSongForPlayerPreview(Song song, Function callback) {
     print('preparing song \'' + song.name + '\' for player preview');
-    bool success = await _downloadSongImage(song);
-    if (success) await this.updateSongColumns(song,
-      <String, String>{'imageFilePath': song.imageFilePath});
-    return success;
+    _downloadSongImage(song, (success) {
+      if (success) {
+        this.updateSongColumns(song,
+          <String, String>{'imageFilePath': song.imageFilePath});
+      }
+      callback(success);
+    });
   }
 
   bool songAudioExistsLocally(Song song) {
     String localPath = _AUDIO_FOLDER + "/" + song.id.toString() + '.audio';
     return song.audioFilePath == localPath;
+  }
+  bool songImageExistsLocally(Song song) {
+    String localPath = _IMAGE_FOLDER + "/" + song.id.toString() + '.img';
+    return song.imageFilePath == localPath;
+  }
+
+  Future<File> getSongAudioFile(Song song) async {
+    String localPath = _AUDIO_FOLDER + "/" + song.id.toString() + '.audio';
+    return File(await Files.getAbsoluteFilePath(localPath));
+  }
+  Future<File> getSongImageFile(Song song) async {
+    String localPath = _IMAGE_FOLDER + "/" + song.id.toString() + '.img';
+    return File(await Files.getAbsoluteFilePath(localPath));
   }
 
   void addOnNewSongListener(Function listener) {

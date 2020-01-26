@@ -21,6 +21,8 @@ dependencies:
   audioplayers:
   path_provider:
   sqflite:
+  catcher: ^0.3.0
+  shared_preferences:
   flutter:
     sdk: flutter
 

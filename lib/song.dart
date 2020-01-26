@@ -12,13 +12,19 @@ class Song {
   String name;
   String artist;
   String album;
+  String lyrics;
+  int dateAdded;
+  int duration;
   String audioFilePath;
   String imageFilePath;
-  String lyrics;
-  DateTime dateAdded;
-  int duration;
 
-  Song({this.id, this.name, this.artist, this.album, this.duration, this.dateAdded});
+  Song({this.id,
+        this.name,
+        this.artist,
+        this.album,
+        this.duration,
+        this.dateAdded,
+        this.lyrics});
 
   factory Song.fromJson(Map<String, dynamic> json) {
     /* parsing songs form json is only done when fetching data from
@@ -31,7 +37,8 @@ class Song {
       artist: json['artist'] as String,
       album: json['album'] as String,
       duration: json['duration'] as int,
-      dateAdded: DateTime.parse(json['date_added'] as String),
+      dateAdded: json['date_added'] as int,
+      lyrics: json['lyrics'] as String,
     );
   }
 
@@ -45,7 +52,7 @@ class Song {
       'imageFilePath': imageFilePath,
       'lyrics': lyrics,
       'duration': duration,
-      'dateAdded': dateAdded.toIso8601String(),
+      'dateAdded': dateAdded,
     };
   }
 
@@ -56,7 +63,7 @@ class Song {
       artist: map['artist'],
       album: map['album'],
       duration: map['duration'],
-      dateAdded: DateTime.parse(map['dateAdded']),
+      dateAdded: map['dateAdded'],
     );
     if (map.containsKey('audioFilePath'))
       song.audioFilePath = map['audioFilePath'];
