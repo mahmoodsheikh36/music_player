@@ -42,7 +42,8 @@ class SongListWidget extends StatelessWidget {
         if (snapshot.hasError) print(snapshot.error);
 
         if (snapshot.hasData) {
-          return ListView.builder(
+          return Scrollbar(
+          child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(5),
               itemCount: snapshot.data.length,
@@ -117,6 +118,7 @@ class SongListWidget extends StatelessWidget {
                   ),
                 );
               }
+            ),
             );
           } else {
             return Center(child: CircularProgressIndicator());
