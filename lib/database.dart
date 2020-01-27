@@ -11,6 +11,7 @@ import 'functionqueue.dart';
 
 const _AUDIO_FOLDER  = 'audio';
 const _IMAGE_FOLDER  = 'image';
+const _DOWNLOAD_TIMEOUT = 100;
 
 class DbProvider {
   Database db;
@@ -228,12 +229,19 @@ class DbProvider {
         body: {
           'username': 'mahmooz'
         }
-      );
-      await Files.saveHttpResponse(response, localPath);
-      song.audioFilePath = localPath;
-      callback(true);
+      ).timeout(Duration(seconds: _DOWNLOAD_TIMEOUT), onTimeout: () {
+        print('timed out downloading audio for \'' + song.name + '\'');
+        return null;
+      });
+      if (response != null) {
+        await Files.saveHttpResponse(response, localPath);
+        song.audioFilePath = localPath;
+        callback(true);
+        print('downloaded audio for song ' + song.name);
+      } else {
+        callback(false);
+      }
       functionQueueCallback();
-      print('downloaded audio for song ' + song.name);
     }, id: localPath);
   }
 
@@ -255,12 +263,19 @@ class DbProvider {
         body: {
           'username': 'mahmooz'
         }
-      );
-      await Files.saveHttpResponse(response, localPath);
-      song.imageFilePath = localPath;
-      callback(true);
+      ).timeout(Duration(seconds: _DOWNLOAD_TIMEOUT), onTimeout: () {
+        print('timed out downloading image for \'' + song.name + '\'');
+        return null;
+      });
+      if (response != null) {
+        await Files.saveHttpResponse(response, localPath);
+        song.imageFilePath = localPath;
+        callback(true);
+        print('downloaded image for song ' + song.name);
+      } else {
+        callback(false);
+      }
       functionQueueCallback();
-      print('downloaded image for song ' + song.name);
     }, id: localPath);
   }
 
