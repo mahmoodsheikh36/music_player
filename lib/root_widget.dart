@@ -4,7 +4,6 @@ import 'package:player/musicplayer.dart';
 import 'package:player/musicplayer_widget.dart';
 import 'placeholder_widget.dart';
 import 'songlist_widget.dart';
-import 'datacollection.dart';
 
 class Root extends StatefulWidget {
   MusicPlayer _musicPlayer;

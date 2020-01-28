@@ -7,8 +7,6 @@ import 'package:player/database.dart';
 import 'package:player/musicplayer.dart';
 import 'package:player/song.dart';
 
-import 'files.dart';
-
 final _DISABLED_PLAYBACK_BUTTON_COLOR = Colors.grey[600];
 final _ENABLED_PLAYBACK_BUTTON_COLOR = Colors.black;
 

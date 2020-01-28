@@ -1,5 +1,3 @@
-import 'dart:isolate';
-
 import 'package:flutter/material.dart';
 import 'package:player/musicplayer.dart';
 import 'package:catcher/catcher_plugin.dart';
