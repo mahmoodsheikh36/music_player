@@ -3,7 +3,7 @@ import 'package:player/dataanalysis.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'musicplayer.dart';
-import 'song.dart';
+import 'music.dart';
 import 'database.dart';
 
 class SongListWidget extends StatelessWidget {
@@ -36,7 +36,9 @@ class SongListWidget extends StatelessWidget {
     });
     return FutureBuilder<List<Song>>(
       future: _dbProvider.openDb().then((val) {
-        return _dbProvider.getAllSongsSorted();
+        print('db shouldve been opened :/');
+        //return _dbProvider.getAllSongsSorted();
+        return null;
       }),
       builder: (context, snapshot) {
         if (snapshot.hasError) print(snapshot.error);
@@ -50,6 +52,7 @@ class SongListWidget extends StatelessWidget {
               itemBuilder: (context, index) {
                 return InkWell(
                   onTap: () {
+                    /*
                     Song song = snapshot.data[index];
                     getSecondsListenedToSong(_dbProvider, song.id).then((
                         double seconds) {
@@ -68,6 +71,7 @@ class SongListWidget extends StatelessWidget {
                         }
                       });
                     }
+                     */
                     // _dbProvider.prepareSongForPlayerPreview(song);
                   },
                   child: Row(
@@ -77,17 +81,11 @@ class SongListWidget extends StatelessWidget {
                         child: ListTile(
                           title: Text(
                             snapshot.data[index].name,
-                            style: Theme
-                                .of(context)
-                                .textTheme
-                                .title,
+                            style: Theme.of(context).textTheme.title,
                           ),
                           subtitle: Text(
-                            snapshot.data[index].artist,
-                            style: Theme
-                                .of(context)
-                                .textTheme
-                                .subtitle,
+                            snapshot.data[index].artists[0].name,
+                            style: Theme.of(context).textTheme.subtitle,
                           ),
                         ),
                       ),
@@ -97,6 +95,7 @@ class SongListWidget extends StatelessWidget {
                           Icons.add_to_queue,
                         ),
                         onPressed: () {
+                          /*
                           Song song = snapshot.data[index];
                           if (_dbProvider.songAudioExistsLocally(song)) {
                             _musicPlayer.addToQueue(song);
@@ -112,6 +111,7 @@ class SongListWidget extends StatelessWidget {
                               }
                             });
                           }
+                           */
                         }
                       ),
                     ],

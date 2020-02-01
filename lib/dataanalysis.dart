@@ -1,14 +1,16 @@
 import 'package:player/database.dart';
 import 'package:player/datacollection.dart';
-import 'package:player/song.dart';
+import 'package:player/music.dart';
 
 Future<Map<Song, double>> getSecondsListenedToAllSongs(DbProvider dbProvider,
                                                        int songCount) async {
+  /*
   final map = <Song, double>{};
   List<Song> songs = await dbProvider.getAllSongs();
   for (int i = 0; i < songCount && i < songs.length; ++i) {
     Song song = songs[i];
   }
+   */
 }
 
 Future<double> getSecondsListenedToSong(DbProvider dbProvider, int songId) async {

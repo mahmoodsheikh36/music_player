@@ -1,7 +1,7 @@
 import 'dart:collection';
 import 'package:audioplayers/audioplayers.dart';
 
-import 'song.dart';
+import 'music.dart';
 import 'files.dart';
 
 class MusicPlayer {
@@ -46,7 +46,7 @@ class MusicPlayer {
     bool emptyQueue = _queue.isEmpty;
     _queue.addLast(song);
     if (emptyQueue) {
-      _playLocal(song.audioFilePath).then((whatever) {
+      _playLocal(song.audioFile.path).then((whatever) {
         _notifyOnAddToQueueListeners();
         this._notifyOnPlayListeners(song);
       });
@@ -62,7 +62,7 @@ class MusicPlayer {
       _queue.addFirst(skippedSong);
     }
     _notifyOnSkipListeners(_queue.first);
-    await _playLocal(_queue.first.audioFilePath);
+    await _playLocal(_queue.first.audioFile.path);
     _notifyOnPlayListeners(_queue.first);
   }
 
@@ -72,13 +72,13 @@ class MusicPlayer {
       _queue.removeFirst();
     }
     _queue.addFirst(song);
-    await _playLocal(song.audioFilePath);
+    await _playLocal(song.audioFile.path);
     _notifyOnPlayListeners(song);
   }
 
   Future<void> resume() async {
     Song songToResume = _queue.first;
-    await _playLocal(songToResume.audioFilePath);
+    await _playLocal(songToResume.audioFile.path);
     _notifyOnResumeListeners();
   }
 
@@ -203,12 +203,12 @@ class MusicPlayer {
     Song removedSong = _queue.removeFirst();
     if (_queue.isNotEmpty) {
       _notifyOnCompleteListeners();
-      await _playLocal(_queue.first.audioFilePath);
+      await _playLocal(_queue.first.audioFile.path);
     } else {
       print('queue empty after complete, replaying last song');
       _queue.addFirst(removedSong);
       _notifyOnCompleteListeners();
-      await _playLocal(removedSong.audioFilePath);
+      await _playLocal(removedSong.audioFile.path);
     }
     _notifyOnPlayListeners(_queue.first);
   }

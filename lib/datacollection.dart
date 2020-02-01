@@ -1,6 +1,6 @@
 import 'package:player/database.dart';
 import 'package:player/musicplayer.dart';
-import 'package:player/song.dart';
+import 'package:player/music.dart';
 
 class MusicMonitor {
   MusicPlayer _musicPlayer;

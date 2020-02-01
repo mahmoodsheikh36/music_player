@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:collection';
 
 class _FunctionQueueEntry {
   Function function;
   Object id;
+  Completer completer;
   _FunctionQueueEntry(this.function, {this.id});
 }
 

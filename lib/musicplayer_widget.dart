@@ -5,7 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:player/database.dart';
 import 'package:player/musicplayer.dart';
-import 'package:player/song.dart';
+import 'package:player/music.dart';
 
 final _DISABLED_PLAYBACK_BUTTON_COLOR = Colors.grey[600];
 final _ENABLED_PLAYBACK_BUTTON_COLOR = Colors.black;
@@ -79,6 +79,7 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
           children: <Widget>[
             FutureBuilder<File>(
               builder: (context, snapshot) {
+                /*
                 Song currentSong = _musicPlayer.currentSong;
                 if (_dbProvider.songImageExistsLocally(currentSong)) {
                   return FutureBuilder<File>(
@@ -100,11 +101,13 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                   _getSongImageFile(currentSong);
                   return CircularProgressIndicator();
                 }
+                 */
+                return null;
               },
             ),
             SizedBox(height: 40),
             Text(
-              _musicPlayer.currentSong.name + ' - ' + _musicPlayer.currentSong.artist,
+              _musicPlayer.currentSong.name + ' - ' + _musicPlayer.currentSong.artists[0].name,
               style: Theme.of(context).textTheme.title,
             ),
             SizedBox(height: 40),
@@ -167,7 +170,7 @@ class _ProgressIndicatorState extends State<_ProgressIndicator> with SingleTicke
   _ProgressIndicatorState(this._musicPlayer);
 
   Future _onPlaySongListener(Song newSong) async {
-    _controller.duration = new Duration(seconds: newSong.duration);
+    _controller.duration = new Duration(milliseconds: (newSong.duration * 1000).toInt());
     // _controller..forward(from: 0);
   }
 
@@ -181,7 +184,7 @@ class _ProgressIndicatorState extends State<_ProgressIndicator> with SingleTicke
     super.initState();
 
     _controller = AnimationController(
-      duration: Duration(seconds: _musicPlayer.currentSong.duration),
+      duration: Duration(milliseconds: (_musicPlayer.currentSong.duration * 1000).toInt()),
       vsync: this,
       animationBehavior: AnimationBehavior.preserve,
     );//..forward(from: _musicPlayer.progress / _musicPlayer.currentSong.duration);
