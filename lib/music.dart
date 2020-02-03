@@ -69,7 +69,8 @@ class Playlist implements SongList {
   List<Song> get songs => _songs;
 
   @override
-  String get subtitle => _songs.length.toString() + ' songs';
+  String get subtitle => _songs.length.toString() +
+      (_songs.length == 1 ? ' song' : ' songs');
 
   @override
   String get title => _name;
@@ -138,8 +139,7 @@ class Album implements SongList {
   List<Song> get songs => _songs;
 
   @override
-  String get subtitle => _songs.length.toString() +
-      (_songs.length == 1 ? ' song' : ' songs');
+  String get subtitle => _artist.name;
 
   @override
   bool get hasImage => image != null;

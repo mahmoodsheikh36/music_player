@@ -82,9 +82,9 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                     icon: Icon(
                       Icons.favorite,
                       color: Colors.pink,
-                      size: PLAYBACK_CONTROL_ICON_SIZE,
                       semanticLabel: 'song liked',
                     ),
+                    iconSize: PLAYBACK_CONTROL_ICON_SIZE,
                   ),
                   IconButton(
                     tooltip: 'go back',
