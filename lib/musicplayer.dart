@@ -39,14 +39,14 @@ class MusicPlayer {
   }
 
   Future<void> _playLocal(String path) async {
-    await _audioPlayer.play((await Files.getAbsoluteFilePath(path)), isLocal: true);
+    await _audioPlayer.play(path, isLocal: true);
   }
 
   void addToQueue(Song song) {
     bool emptyQueue = _queue.isEmpty;
     _queue.addLast(song);
     if (emptyQueue) {
-      _playLocal(song.audioFile.path).then((whatever) {
+      _playLocal(song.audio.path).then((whatever) {
         _notifyOnAddToQueueListeners();
         this._notifyOnPlayListeners(song);
       });
@@ -62,7 +62,7 @@ class MusicPlayer {
       _queue.addFirst(skippedSong);
     }
     _notifyOnSkipListeners(_queue.first);
-    await _playLocal(_queue.first.audioFile.path);
+    await _playLocal(_queue.first.audio.path);
     _notifyOnPlayListeners(_queue.first);
   }
 
@@ -72,13 +72,13 @@ class MusicPlayer {
       _queue.removeFirst();
     }
     _queue.addFirst(song);
-    await _playLocal(song.audioFile.path);
+    await _playLocal(song.audio.path);
     _notifyOnPlayListeners(song);
   }
 
   Future<void> resume() async {
     Song songToResume = _queue.first;
-    await _playLocal(songToResume.audioFile.path);
+    await _playLocal(songToResume.audio.path);
     _notifyOnResumeListeners();
   }
 
@@ -203,12 +203,12 @@ class MusicPlayer {
     Song removedSong = _queue.removeFirst();
     if (_queue.isNotEmpty) {
       _notifyOnCompleteListeners();
-      await _playLocal(_queue.first.audioFile.path);
+      await _playLocal(_queue.first.audio.path);
     } else {
       print('queue empty after complete, replaying last song');
       _queue.addFirst(removedSong);
       _notifyOnCompleteListeners();
-      await _playLocal(removedSong.audioFile.path);
+      await _playLocal(removedSong.audio.path);
     }
     _notifyOnPlayListeners(_queue.first);
   }

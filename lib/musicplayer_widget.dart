@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:async';
 
 import 'package:flutter/gestures.dart';
@@ -9,6 +8,9 @@ import 'package:player/music.dart';
 
 final _DISABLED_PLAYBACK_BUTTON_COLOR = Colors.grey[600];
 final _ENABLED_PLAYBACK_BUTTON_COLOR = Colors.black;
+
+const IMAGE_TO_BODY_WIDTH_PERCENTAGE = 0.65;
+const double BODY_PADDING = 20;
 
 class MusicPlayerWidget extends StatefulWidget {
   final MusicPlayer _musicPlayer;
@@ -58,98 +60,79 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
     super.dispose();
   }
 
-  Future<File> _getSongImageFile(Song song) async {
-    _dbProvider.prepareSongForPlayerPreview(song, (success) {
-      if (success && this.mounted) {
-        setState(() {
-        });
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Center(
       child: _musicPlayer.currentSong != null ?
-      Container(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            FutureBuilder<File>(
-              builder: (context, snapshot) {
-                /*
-                Song currentSong = _musicPlayer.currentSong;
-                if (_dbProvider.songImageExistsLocally(currentSong)) {
-                  return FutureBuilder<File>(
-                    future: _dbProvider.getSongImageFile(currentSong).then((imageFile) {
-                      return imageFile;
-                    }),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasData) {
-                        return Image.file(
-                          snapshot.data,
-                          width: MediaQuery.of(context).size.width * 0.65,
-                        );
-                      } else {
-                        return CircularProgressIndicator();
+        Container(
+          padding: EdgeInsets.all(BODY_PADDING),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Builder(
+                builder: (context) {
+                  Song currentSong = _musicPlayer.currentSong;
+                  if (currentSong.hasImage) {
+                    print('image: ' + currentSong.image.path);
+                    print('image: ' + currentSong.image.toString());
+                    return Image.file(
+                      currentSong.image,
+                      width: MediaQuery.of(context).size.width * IMAGE_TO_BODY_WIDTH_PERCENTAGE,
+                    );
+                  } else {
+                    _dbProvider.downloadSongImage(currentSong).then((gotImage) {
+                      if (gotImage)
+                        setState(() { });
+                    });
+                    return CircularProgressIndicator();
+                  }
+                },
+              ),
+              SizedBox(height: 40),
+              Text(
+                _musicPlayer.currentSong.name + ' - ' + _musicPlayer.currentSong.artists[0].name,
+                style: Theme.of(context).textTheme.title,
+              ),
+              SizedBox(height: 40),
+              _ProgressIndicator(_musicPlayer),
+              SizedBox(height: 40),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  IconButton(
+                    tooltip: 'go back',
+                    icon: Icon(
+                      Icons.skip_previous,
+                      color: _isPlayPrevButtonEnabled ?
+                      _ENABLED_PLAYBACK_BUTTON_COLOR :
+                      _DISABLED_PLAYBACK_BUTTON_COLOR,
+                    ),
+                    iconSize: 35,
+                  ),
+                  _PlayPauseButton(_musicPlayer),
+                  IconButton(
+                    tooltip: 'skip',
+                    onPressed: () {
+                      if (_isPlayNextButtonEnabled) {
+                        _musicPlayer.skip();
                       }
-                    }
-                  );
-                } else {
-                  _getSongImageFile(currentSong);
-                  return CircularProgressIndicator();
-                }
-                 */
-                return null;
-              },
-            ),
-            SizedBox(height: 40),
-            Text(
-              _musicPlayer.currentSong.name + ' - ' + _musicPlayer.currentSong.artists[0].name,
-              style: Theme.of(context).textTheme.title,
-            ),
-            SizedBox(height: 40),
-            _ProgressIndicator(_musicPlayer),
-            SizedBox(height: 40),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                IconButton(
-                  tooltip: 'go back',
-                  icon: Icon(
-                    Icons.skip_previous,
-                    color: _isPlayPrevButtonEnabled ?
-                    _ENABLED_PLAYBACK_BUTTON_COLOR :
-                    _DISABLED_PLAYBACK_BUTTON_COLOR,
+                    },
+                    icon: Icon(
+                      Icons.skip_next,
+                      color: _isPlayNextButtonEnabled ?
+                      _ENABLED_PLAYBACK_BUTTON_COLOR :
+                      _DISABLED_PLAYBACK_BUTTON_COLOR,
+                    ),
+                    iconSize: 35,
                   ),
-                  iconSize: 35,
-                ),
-                _PlayPauseButton(_musicPlayer),
-                IconButton(
-                  tooltip: 'skip',
-                  onPressed: () {
-                    if (_isPlayNextButtonEnabled) {
-                      _musicPlayer.skip();
-                    }
-                  },
-                  icon: Icon(
-                    Icons.skip_next,
-                    color: _isPlayNextButtonEnabled ?
-                    _ENABLED_PLAYBACK_BUTTON_COLOR :
-                    _DISABLED_PLAYBACK_BUTTON_COLOR,
-                  ),
-                  iconSize: 35,
-                ),
-              ],
-            ),
-          ],
-        )
-      ) : CircularProgressIndicator()
+                ],
+              ),
+            ],
+          )
+        ) : CircularProgressIndicator()
     );
   }
-
 }
 
 class _ProgressIndicator extends StatefulWidget {

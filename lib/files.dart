@@ -23,6 +23,8 @@ class Files {
   }
 
   static Future<String> getAbsoluteFilePath(String path) async {
+    if (path == null)
+      return null;
     print((await getAppDir()) + "/" + path);
     return (await getAppDir()) + "/" + path;
   }

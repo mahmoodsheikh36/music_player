@@ -15,8 +15,8 @@ void main() {
         ['mahmod.m2015@gmail.com'])
   ]);
 
-  Catcher(App(), releaseConfig: releaseOptions);
-  // runApp(App());
+  //Catcher(App(), releaseConfig: releaseOptions);
+  runApp(App());
 }
 
 Color textColor = Color(0xffddaa44);

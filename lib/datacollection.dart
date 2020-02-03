@@ -1,6 +1,7 @@
 import 'package:player/database.dart';
 import 'package:player/musicplayer.dart';
 import 'package:player/music.dart';
+import 'package:player/utils.dart';
 
 class MusicMonitor {
   MusicPlayer _musicPlayer;
@@ -23,8 +24,8 @@ class MusicMonitor {
 
   void _onPositionChangeListener(Duration newPosition) {
     _dbProvider.getLastPlayback().then((Playback lastPlayback) {
-      _dbProvider.updatePlaybackColumns(lastPlayback, <String, dynamic>{
-        'endTimestamp': DateTime.now().millisecondsSinceEpoch,
+      _dbProvider.updatePlaybackRow(lastPlayback, <String, dynamic>{
+        'end_time': Utils.currentTime(),
       });
     });
   }
@@ -32,7 +33,7 @@ class MusicMonitor {
   void _onPauseListener() {
     _dbProvider.getLastPlayback().then((Playback lastPlayback) {
       _dbProvider.insertPause(lastPlayback.id,
-                              DateTime.now().millisecondsSinceEpoch);
+                              Utils.currentTime());
       print('datacollection: inserted pause');
     });
   }
@@ -40,7 +41,7 @@ class MusicMonitor {
   void _onResumeListener() {
     _dbProvider.getLastPlayback().then((Playback lastPlayback) {
       _dbProvider.insertResume(lastPlayback.id,
-                               DateTime.now().millisecondsSinceEpoch);
+                               Utils.currentTime());
       print('datacollection: inserted resume');
     });
   }
@@ -53,7 +54,7 @@ class MusicMonitor {
     _dbProvider.getLastPlayback().then((Playback lastPlayback) {
       _dbProvider.insertSeek(lastPlayback.id,
                              newPosition.inMilliseconds / 1000,
-                             DateTime.now().millisecondsSinceEpoch);
+                             Utils.currentTime());
       print('datacollection: inserted seek');
     });
   }
@@ -65,7 +66,7 @@ class MusicMonitor {
   Future _startNewPlayback(int songId) async {
     Playback newPlayback = Playback(
       songId: songId,
-      startTimestamp: DateTime.now().millisecondsSinceEpoch,
+      startTimestamp: Utils.currentTime(),
       endTimestamp: -1,
     );
     _dbProvider.insertPlayback(newPlayback);
@@ -87,18 +88,18 @@ class Playback {
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'id': id,
-      'songId': songId,
-      'startTimestamp': startTimestamp,
-      'endTimestamp': endTimestamp,
+      'song_id': songId,
+      'start_time': startTimestamp,
+      'end_time': endTimestamp,
     };
   }
 
   static Playback fromMap(Map<String, dynamic> map) {
     return Playback(
       id: map['id'],
-      songId: map['songId'],
-      startTimestamp: map['startTimestamp'],
-      endTimestamp: map['endTimestamp'],
+      songId: map['song_id'],
+      startTimestamp: map['start_time'],
+      endTimestamp: map['end_time'],
     );
   }
 }
