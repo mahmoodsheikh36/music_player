@@ -1,8 +1,15 @@
 import 'dart:collection';
+
 import 'package:audioplayers/audioplayers.dart';
 
 import 'music.dart';
 import 'files.dart';
+
+/* TODO: add more and make musicplayer_widget comptabile with them! */
+enum PlaybackMode {
+  LOOP_ONE_SONG,
+  LOOP
+}
 
 class MusicPlayer {
   // typedef Listener = void Function(double previous, double current, bool seekedPosition);
@@ -15,7 +22,9 @@ class MusicPlayer {
   final List<Function> _onCompleteListeners = List<Function>();
   final List<Function> _onSeekListeners = List<Function>();
   final List<Function> _onAddToQueueListeners = List<Function>();
-  final Queue<Song> _queue = Queue();
+  final Queue<Song> _queue = Queue<Song>();
+  final Queue<Song> _endedSongs = Queue<Song>();
+  PlaybackMode _playbackMode = PlaybackMode.LOOP;
 
   MusicPlayer() {
     _audioPlayer.onAudioPositionChanged.listen((Duration position) {
@@ -56,23 +65,39 @@ class MusicPlayer {
   }
 
   Future<void> skip() async {
+    print(1);
     await _audioPlayer.stop();
-    Song skippedSong = _queue.removeFirst();
+    _endedSongs.addLast(_queue.removeFirst());
+    print(3);
     if (_queue.isEmpty) {
-      _queue.addFirst(skippedSong);
+      _queue.add(_endedSongs.removeFirst());
     }
-    _notifyOnSkipListeners(_queue.first);
+    print(2);
     await _playLocal(_queue.first.audio.path);
+    _notifyOnSkipListeners(_queue.first);
     _notifyOnPlayListeners(_queue.first);
+    print(4);
   }
 
-  Future<void> play(Song song) async {
+  Future<void> play(SongList songList, int index) async {
+    Song song = songList.songs[index];
     if (_queue.isNotEmpty) {
       await _audioPlayer.stop();
-      _queue.removeFirst();
+      _queue.clear();
     }
     _queue.addFirst(song);
     await _playLocal(song.audio.path);
+    /* TODO: either make sure all songList songs have their audio downloaded or
+             handle it in a better way
+     */
+    for (int i = index + 1; i < songList.songs.length; ++i) {
+      if (songList.songs[i].hasAudio)
+        _queue.addLast(songList.songs[i]);
+    }
+    for (int i = 0; i < index; ++i) {
+      if (songList.songs[i].hasAudio)
+        _queue.addLast(songList.songs[i]);
+    }
     _notifyOnPlayListeners(song);
   }
 
@@ -200,16 +225,17 @@ class MusicPlayer {
 
   Future<void> _onSongComplete() async {
     await _audioPlayer.stop();
-    Song removedSong = _queue.removeFirst();
-    if (_queue.isNotEmpty) {
-      _notifyOnCompleteListeners();
+    print(_queue.first.id.toString() + ' completed');
+    if (_playbackMode == PlaybackMode.LOOP_ONE_SONG) {
       await _playLocal(_queue.first.audio.path);
-    } else {
-      print('queue empty after complete, replaying last song');
-      _queue.addFirst(removedSong);
-      _notifyOnCompleteListeners();
-      await _playLocal(removedSong.audio.path);
+    } else if (_playbackMode == PlaybackMode.LOOP) {
+      _endedSongs.addLast(_queue.removeFirst());
+      if (_queue.isEmpty) {
+        _queue.add(_endedSongs.removeFirst());
+      }
+      await _playLocal(_queue.first.audio.path);
     }
+    _notifyOnCompleteListeners();
     _notifyOnPlayListeners(_queue.first);
   }
 
@@ -223,12 +249,17 @@ class MusicPlayer {
     return _audioPlayer.state == AudioPlayerState.PLAYING;
   }
 
-  bool hasNextSong() {
-    return _queue.length > 1;
-  }
-
   /* current position in milliseconds */
   Future<int> getCurrentPosition() async {
     return await _audioPlayer.getCurrentPosition();
   }
+
+  void changePlaybackMode() {
+    if (_playbackMode == PlaybackMode.LOOP_ONE_SONG)
+      _playbackMode = PlaybackMode.LOOP;
+    else if (_playbackMode == PlaybackMode.LOOP)
+      _playbackMode = PlaybackMode.LOOP_ONE_SONG;
+  }
+
+  PlaybackMode get playbackMode => _playbackMode;
 }

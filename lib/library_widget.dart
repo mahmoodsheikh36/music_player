@@ -168,7 +168,8 @@ class SongListWidget extends StatelessWidget {
                     _songList.image,
                   );
                 } else {
-                  Song song = _songList.songs[index - 1];
+                  int songIndex = index - 1;
+                  Song song = _songList.songs[songIndex];
                   return InkWell(
                     onTap: () {
                       getSecondsListenedToSong(_dbProvider, song.id).then((
@@ -177,12 +178,12 @@ class SongListWidget extends StatelessWidget {
                       });
 
                       if (song.hasAudio) {
-                        _player.play(song);
+                        _player.play(_songList, songIndex);
                       } else {
                         _dbProvider.downloadSongAudio(song).then((gotAudio) {
                           if (gotAudio) {
                             print('playing song ' + song.name);
-                            _player.play(song);
+                            _player.play(_songList, songIndex);
                           } else {
                             print('wont play song ' + song.name);
                           }

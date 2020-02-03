@@ -6,11 +6,9 @@ import 'package:player/database.dart';
 import 'package:player/musicplayer.dart';
 import 'package:player/music.dart';
 
-final _DISABLED_PLAYBACK_BUTTON_COLOR = Colors.grey[600];
-final _ENABLED_PLAYBACK_BUTTON_COLOR = Colors.black;
-
-const IMAGE_TO_BODY_WIDTH_PERCENTAGE = 0.65;
+const double IMAGE_TO_BODY_WIDTH_PERCENTAGE = 0.65;
 const double BODY_PADDING = 20;
+const double PLAYBACK_CONTROL_ICON_SIZE = 24;
 
 class MusicPlayerWidget extends StatefulWidget {
   final MusicPlayer _musicPlayer;
@@ -25,38 +23,18 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
   final MusicPlayer _musicPlayer;
   final DbProvider _dbProvider;
 
-  bool _isPlayNextButtonEnabled;
-  bool _isPlayPrevButtonEnabled;
-
-  void _resetPlaybackButtons() {
-    if (_musicPlayer.hasNextSong() && _isPlayNextButtonEnabled)
-      return;
-    _isPlayNextButtonEnabled = _musicPlayer.hasNextSong();
-  }
-
   void _onPlayListener(Song newSong) {
-    _resetPlaybackButtons();
-    setState(() {
-    });
-  }
-
-  void _onAddToQueueListener() {
-    _resetPlaybackButtons();
     setState(() {
     });
   }
 
   _MusicPlayerWidgetState(this._dbProvider, this._musicPlayer) {
     _musicPlayer.addOnPlayListener(_onPlayListener);
-    _musicPlayer.addOnAddToQueueListener(_onAddToQueueListener);
-    _isPlayNextButtonEnabled = _musicPlayer.hasNextSong();
-    _isPlayPrevButtonEnabled = false;
   }
 
   @override
   void dispose() {
     _musicPlayer.removeOnPlayListener(_onPlayListener);
-    _musicPlayer.removeOnAddToQueueListener(_onAddToQueueListener);
     super.dispose();
   }
 
@@ -101,31 +79,44 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   IconButton(
+                    icon: Icon(
+                      Icons.favorite,
+                      color: Colors.pink,
+                      size: PLAYBACK_CONTROL_ICON_SIZE,
+                      semanticLabel: 'song liked',
+                    ),
+                  ),
+                  IconButton(
                     tooltip: 'go back',
                     icon: Icon(
                       Icons.skip_previous,
-                      color: _isPlayPrevButtonEnabled ?
-                      _ENABLED_PLAYBACK_BUTTON_COLOR :
-                      _DISABLED_PLAYBACK_BUTTON_COLOR,
                     ),
-                    iconSize: 35,
+                    iconSize: PLAYBACK_CONTROL_ICON_SIZE,
                   ),
                   _PlayPauseButton(_musicPlayer),
                   IconButton(
                     tooltip: 'skip',
                     onPressed: () {
-                      if (_isPlayNextButtonEnabled) {
-                        _musicPlayer.skip();
-                      }
+                      _musicPlayer.skip();
                     },
                     icon: Icon(
                       Icons.skip_next,
-                      color: _isPlayNextButtonEnabled ?
-                      _ENABLED_PLAYBACK_BUTTON_COLOR :
-                      _DISABLED_PLAYBACK_BUTTON_COLOR,
                     ),
-                    iconSize: 35,
+                    iconSize: PLAYBACK_CONTROL_ICON_SIZE,
                   ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.loop,
+                      color: _musicPlayer.playbackMode == PlaybackMode.LOOP ?
+                        Colors.grey : Colors.pink,
+                      size: PLAYBACK_CONTROL_ICON_SIZE,
+                      semanticLabel: 'switch between playback modes',
+                    ),
+                    onPressed: () {
+                      _musicPlayer.changePlaybackMode();
+                      setState(() { });
+                    },
+                  )
                 ],
               ),
             ],
