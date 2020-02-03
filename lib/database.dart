@@ -133,6 +133,11 @@ class DbProvider {
           playlistImage['playlist_id'],
           playlistImage['user_static_file_id']);
     }
+    final hiddenAlbums = metadata['hidden_albums'] as List;
+    for (final hiddenAlbum in hiddenAlbums) {
+      int albumId = hiddenAlbum['album_id'];
+      await _deleteAlbum(albumId);
+    }
   }
 
   Future _onConfigure(Database db) async {
@@ -510,7 +515,7 @@ class DbProvider {
     });
   }
 
-  Future<List<Map>> getAlbumsRows() async {
+  Future<List<Map>> _getAlbumsRows() async {
     List<Map> maps = await db.query(
         'albums',
         columns: null
@@ -518,8 +523,20 @@ class DbProvider {
     return maps;
   }
 
+  Future<Map> _getAlbumsRow(int albumId) async {
+    List<Map> maps = await db.query(
+        'albums',
+        columns: null,
+        where: 'id = ?',
+        whereArgs: [albumId]
+    );
+    if (maps.length == 0)
+      return null;
+    return maps[0];
+  }
+
   Future<List<Album>> getAlbums() async {
-    List<Map> albumMaps = await getAlbumsRows();
+    List<Map> albumMaps = await _getAlbumsRows();
     List<Album> albums = [];
     for (Map map in albumMaps) {
       Album album = new Album(
@@ -547,7 +564,7 @@ class DbProvider {
 
   Future<List<Song>> _getAlbumSongs(int albumId) async {
     List<Song> songs = [];
-    List<Map> albumSongsMaps = await getAlbumSongsRows(albumId);
+    List<Map> albumSongsMaps = await _getAlbumSongsRows(albumId);
     for (final albumSongsMap in albumSongsMaps) {
       songs.add(await _getSong(albumSongsMap['song_id']));
     }
@@ -574,7 +591,7 @@ class DbProvider {
     return maps;
   }
 
-  Future<List<Map>> getAlbumSongsRows(int albumId) async {
+  Future<List<Map>> _getAlbumSongsRows(int albumId) async {
     List<Map> maps = await db.query(
         'album_songs',
         columns: null,
@@ -584,7 +601,7 @@ class DbProvider {
     return maps;
   }
 
-  Future<Map> getSongsRow(int songId) async {
+  Future<Map> _getSongsRow(int songId) async {
     List<Map> maps = await db.query(
         'songs',
         columns: null,
@@ -612,7 +629,7 @@ class DbProvider {
   }
 
   Future<Song> _getSong(int songId) async {
-    Map songMap = await getSongsRow(songId);
+    Map songMap = await _getSongsRow(songId);
     Song song = Song(
         songMap['id'],
         songMap['name'],
@@ -999,5 +1016,43 @@ class DbProvider {
     await db.insert('metadata_requests', <String, dynamic>{
       'time': time
     });
+  }
+
+  /* wipes it from the face of the earth */
+  Future _deleteAlbum(int albumId) async {
+    print('deleting album ' + albumId.toString());
+    Map albumMap = await _getAlbumsRow(albumId);
+    if (albumMap == null) {
+      print('album $albumId doesnt exist, no need to delete it');
+      return;
+    }
+    Map albumImage = await _getAlbumImagesRow(albumId);
+    int fileId = albumImage['file_id'];
+    await _deleteDatabaseFile(fileId);
+    List<Map> albumSongsRows = await _getAlbumSongsRows(albumId);
+    for (final albumSongsRow in albumSongsRows) {
+      int songId = albumSongsRow['song_id'];
+      Map songAudio = await _getSongAudioRow(songId);
+      Map songImage = await _getSongImagesRow(songId);
+      int audioFileId = songAudio['file_id'];
+      int imageFileId = songImage['file_id'];
+      _deleteDatabaseFile(audioFileId);
+      _deleteDatabaseFile(imageFileId);
+    }
+    await db.delete(
+      'albums',
+      where: 'id = ?',
+      whereArgs: [albumId],
+    );
+  }
+
+  Future _deleteDatabaseFile(int fileId) async {
+    String fileName = await _getFileName(fileId);
+    if (fileName != null) {
+      File file = File(await Files.getAbsoluteFilePath(fileName));
+      if (await file.exists()) {
+        await file.delete();
+      }
+    }
   }
 }
