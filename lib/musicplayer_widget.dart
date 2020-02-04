@@ -22,6 +22,7 @@ class MusicPlayerWidget extends StatefulWidget {
 class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
   final MusicPlayer _musicPlayer;
   final DbProvider _dbProvider;
+  bool _isCurrentSongLiked = false;
 
   void _onPlayListener(Song newSong) {
     setState(() {
@@ -40,6 +41,12 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (_musicPlayer.currentSong != null) {
+      _dbProvider.isSongLiked(_musicPlayer.currentSong.id).then((isLiked) {
+        _isCurrentSongLiked = isLiked;
+        setState(() { });
+      });
+    }
     return Center(
       child: _musicPlayer.currentSong != null ?
         Container(
@@ -52,8 +59,6 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                 builder: (context) {
                   Song currentSong = _musicPlayer.currentSong;
                   if (currentSong.hasImage) {
-                    print('image: ' + currentSong.image.path);
-                    print('image: ' + currentSong.image.toString());
                     return Image.file(
                       currentSong.image,
                       width: MediaQuery.of(context).size.width * IMAGE_TO_BODY_WIDTH_PERCENTAGE,
@@ -81,9 +86,21 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                   IconButton(
                     icon: Icon(
                       Icons.favorite,
-                      color: Colors.pink,
+                      color: _isCurrentSongLiked ? Colors.pink : Colors.grey,
                       semanticLabel: 'song liked',
                     ),
+                    onPressed: () {
+                      _dbProvider.isSongLiked(_musicPlayer.currentSong.id).then((isLiked) {
+                        if (!isLiked) {
+                          _dbProvider.addSongToLikedSongsPlaylist(
+                              _musicPlayer.currentSong.id).then((whatever) {
+                            setState(() {});
+                          });
+                        } else {
+                          print('song already liked..');
+                        }
+                      });
+                    },
                     iconSize: PLAYBACK_CONTROL_ICON_SIZE,
                   ),
                   IconButton(

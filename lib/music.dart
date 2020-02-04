@@ -89,14 +89,12 @@ class SingleSongsList implements SongList {
   }
 
   @override
-  // TODO: implement hasImage
   bool get hasImage => image != null;
 
   @override
   List<Song> get songs => _songs;
 
   @override
-  // TODO: implement subtitle
   String get subtitle => _songs.length.toString() +
       (_songs.length == 1 ? ' song' : ' songs');
 
@@ -159,13 +157,17 @@ class MusicLibrary {
   List<Playlist> playlists;
   DbProvider _dbProvider;
   bool _prepared = false;
+  bool _preparing = false;
 
   MusicLibrary(DbProvider dbProvider) {
     _dbProvider = dbProvider;
   }
 
   Future prepare() async {
+    if (_preparing)
+      return;
     if (!_prepared) {
+      _preparing = true;
       await _dbProvider.initIfNotAlready();
       _albums = await _dbProvider.getAlbums();
       _singlesList = SingleSongsList(
@@ -179,6 +181,7 @@ class MusicLibrary {
 
       _prepared = true;
     }
+    _preparing = false;
   }
 
   Song getSong(int songId) {

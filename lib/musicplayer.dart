@@ -84,20 +84,10 @@ class MusicPlayer {
     if (_queue.isNotEmpty) {
       await _audioPlayer.stop();
       _queue.clear();
+      _endedSongs.clear();
     }
     _queue.addFirst(song);
     await _playLocal(song.audio.path);
-    /* TODO: either make sure all songList songs have their audio downloaded or
-             handle it in a better way
-     */
-    for (int i = index + 1; i < songList.songs.length; ++i) {
-      if (songList.songs[i].hasAudio)
-        _queue.addLast(songList.songs[i]);
-    }
-    for (int i = 0; i < index; ++i) {
-      if (songList.songs[i].hasAudio)
-        _queue.addLast(songList.songs[i]);
-    }
     _notifyOnPlayListeners(song);
   }
 

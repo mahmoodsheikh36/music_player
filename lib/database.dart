@@ -12,8 +12,11 @@ import 'music.dart';
 import 'datacollection.dart';
 import 'functionqueue.dart';
 
-const _BACKEND = "http://10.0.0.15";
+const _BACKEND = "http://10.0.0.55";
 const _USERNAME = 'mahmooz';
+const _PASSWORD = 'mahmooz';
+
+const LIKED_SONGS_PLAYLIST_ID = 1;
 
 const _DOWNLOAD_TIMEOUT = 200;
 const _FILES_FOLDER = 'files';
@@ -120,6 +123,16 @@ class DbProvider {
     }
     final playlistSongs = metadata['playlist_songs'] as List;
     for (final playlistSong in playlistSongs) {
+      /* TODO: handle this trash code wtf, should be done like that thats stupid
+      */
+      int playlistId = playlistSong['playlist_id'];
+      int songId = playlistSong['song_id'];
+      if (playlistId == LIKED_SONGS_PLAYLIST_ID) {
+        if (await isSongLiked(songId)) {
+          print('skipping already added liked song');
+          continue;
+        }
+      }
       await _addPlaylistSongsRow(
           playlistSong['id'],
           playlistSong['song_id'],
@@ -763,10 +776,10 @@ class DbProvider {
       completer.complete(false);
     } else {
       print('adding song image to download queue: ' + song.name);
-      Map songImage = await _getSongImagesRow(song.id);
-      int fileId = songImage['file_id'];
-      String savedFilename = await _getFileName(fileId);
       _httpRequestFunctionQueue.add((functionQueueCallback) async {
+        Map songImage = await _getSongImagesRow(song.id);
+        int fileId = songImage['file_id'];
+        String savedFilename = await _getFileName(fileId);
         final response = await http.get(
             _BACKEND + '/static/file/$fileId'
         ).timeout(Duration(seconds: _DOWNLOAD_TIMEOUT), onTimeout: () {
@@ -794,19 +807,26 @@ class DbProvider {
     return completer.future;
   }
 
+  String _getSongAudioUniqueId(Song song) {
+    return song.hashCode.toString() + 'audio';
+  }
+
+  bool isDownloadingSongAudio(Song song) {
+    return _httpRequestFunctionQueue.hasEntryWithId(_getSongAudioUniqueId(song));
+  }
+
   Future<bool> downloadSongAudio(Song song) async {
     Completer<bool> completer = new Completer<bool>();
     String fileName = _FILES_FOLDER + '/' + Utils.randomString();
-    String functionId = song.hashCode.toString() + 'audio';
-    if (_httpRequestFunctionQueue.hasEntryWithId(functionId)) {
+    if (isDownloadingSongAudio(song)) {
       print('rejecting song audio download request: ' + song.name);
       completer.complete(false);
     } else {
       print('adding song audio to download queue: ' + song.name);
-      Map songAudio = await _getSongAudioRow(song.id);
-      int fileId = songAudio['file_id'];
-      String savedFilename = await _getFileName(fileId);
       _httpRequestFunctionQueue.add((functionQueueCallback) async {
+        Map songAudio = await _getSongAudioRow(song.id);
+        int fileId = songAudio['file_id'];
+        String savedFilename = await _getFileName(fileId);
         final response = await http.get(
             _BACKEND + '/static/file/$fileId'
         ).timeout(Duration(seconds: _DOWNLOAD_TIMEOUT), onTimeout: () {
@@ -829,7 +849,7 @@ class DbProvider {
           completer.complete(false);
         }
         functionQueueCallback();
-      }, id: functionId);
+      }, id: _getSongAudioUniqueId(song));
     }
     return completer.future;
   }
@@ -946,6 +966,17 @@ class DbProvider {
     );
     return maps;
   }
+  Future<Map> _getPlaylistSongsRow(int playlistId, int songId) async {
+    List<Map> maps = await db.query(
+      'playlist_songs',
+      columns: null,
+      where: 'playlist_id = ? AND song_id = ?',
+      whereArgs: [playlistId, songId],
+    );
+    if (maps.length == 0)
+      return null;
+    return maps[0];
+  }
 
   Future getPlaylists(MusicLibrary library) async {
     List<Map> playlistMaps = await _getPlaylistsRows();
@@ -1054,5 +1085,28 @@ class DbProvider {
         await file.delete();
       }
     }
+  }
+
+  Future addSongToLikedSongsPlaylist(int songId) async {
+    final response = await http.post(_BACKEND +
+        '/music/add_song_to_playlist?playlist_id=$LIKED_SONGS_PLAYLIST_ID&song_id=$songId',
+      body: {
+        'username': _USERNAME,
+        'password': _PASSWORD,
+      }
+    );
+    int rowId = int.tryParse(response.body);
+    if (rowId != null) {
+      await _addPlaylistSongsRow(
+          rowId, songId, LIKED_SONGS_PLAYLIST_ID, Utils.currentTime());
+      print('added song to liked songs playlist');
+    } else {
+      print(response.body);
+    }
+  }
+
+  Future<bool> isSongLiked(int songId) async {
+    Map playlistSongsRow = await _getPlaylistSongsRow(LIKED_SONGS_PLAYLIST_ID, songId);
+    return playlistSongsRow != null;
   }
 }
