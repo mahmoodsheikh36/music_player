@@ -17,3 +17,4 @@
 13. the playlist_songs time_added column is out of sync from the server, check the addToLikedSongsPlaylist function, its because of the above issue? or not.. i should probably return the full playlist_songs row from the /music/add_playlist_to_song route and use that to keep client in sync
 14. currently there is no way to remove a song from the Liked Songs playlist, maybe thats a good thing idk lol
 15. currently there is no way to add playlists or add songs to playlists or do anything related to playlists at all except for the Liked Songs playlist lol
+16. i think when a songs audio gave an error while being downloaded the audio for the next songs in the queue wont be downloaded as the queueCallBack wont be called
