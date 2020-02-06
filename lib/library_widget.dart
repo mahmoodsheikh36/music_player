@@ -243,7 +243,6 @@ class SongListWidgetState extends State<SongListWidget> {
                                   }
                                 });
                               }
-                              print('should set state right now... :(');
                               setState(() { });
                             }
                         ),
