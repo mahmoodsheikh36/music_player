@@ -18,3 +18,4 @@
 14. currently there is no way to remove a song from the Liked Songs playlist, maybe thats a good thing idk lol
 15. currently there is no way to add playlists or add songs to playlists or do anything related to playlists at all except for the Liked Songs playlist lol
 16. i think when a songs audio gave an error while being downloaded the audio for the next songs in the queue wont be downloaded as the queueCallBack wont be called
+18. the functions in dataanalysis module need to be rewritten, they dont calculate things right
