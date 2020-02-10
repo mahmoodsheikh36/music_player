@@ -4,6 +4,7 @@ import 'dart:core';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
+import 'package:player/dataanalysis.dart';
 import 'package:player/utils.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -18,7 +19,7 @@ const _PASSWORD = 'mahmooz';
 
 const LIKED_SONGS_PLAYLIST_ID = 1;
 
-const _DOWNLOAD_TIMEOUT = 200;
+const _DOWNLOAD_TIMEOUT = 100;
 const _FILES_FOLDER = 'files';
 
 class DbProvider {
@@ -530,9 +531,11 @@ class DbProvider {
 
   Future<List<Map>> _getAlbumsRows() async {
     List<Map> maps = await db.query(
-        'albums',
-        columns: null
+      'albums',
+      columns: null,
+      orderBy: 'time_added DESC',
     );
+    print(maps[0]['time_added']);
     return maps;
   }
 
@@ -560,6 +563,7 @@ class DbProvider {
         map['time_added'],
         image: await _getAlbumImage(map['id']),
       );
+      print(map['time_added']);
       for (Song song in album.songs) {
         song.album = album;
       }
@@ -665,6 +669,8 @@ class DbProvider {
     if (imageFileName != null) {
       song.image = File(await Files.getAbsoluteFilePath(imageFileName));
     }
+
+    song.secondsListened = (await getSecondsListenedToSong(this, song.id)).toInt();
 
     return song;
   }

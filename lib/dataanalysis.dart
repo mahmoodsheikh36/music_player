@@ -17,6 +17,7 @@ Future<double> getSecondsListenedToSong(DbProvider dbProvider, int songId) async
   double seconds = 0;
   List<Playback> playbacks = await dbProvider.getPlaybacksForSong(songId);
   for (Playback playback in playbacks) {
+    List<int> pauses = await dbProvider.getPausesForPlayback(playback.id);
     if (playback.endTimestamp > 0)
       seconds += (playback.endTimestamp - playback.startTimestamp) / 1000;
   }

@@ -42,13 +42,13 @@ class App extends StatelessWidget {
         accentColor: textColor,
 
         // Define the default font family.
-        fontFamily: 'Georgia',
+        fontFamily: 'Inconsolata',
 
         // Define the default TextTheme. Use this to specify the default
         // text styling for headlines, titles, bodies of text, and more.
         textTheme: TextTheme(
           headline: TextStyle(fontSize: 72.0, fontWeight: FontWeight.bold, color: textColor),
-          body1: TextStyle(fontSize: 14.0, fontFamily: 'Hind', color: textColor),
+          body1: TextStyle(fontSize: 14.0, fontFamily: 'Inconsolata', color: textColor),
           title: TextStyle(fontSize: 17.0, fontStyle: FontStyle.normal, color: textColor),
           subtitle: TextStyle(fontSize: 13.0, fontStyle: FontStyle.normal, color: Colors.black),
         ),

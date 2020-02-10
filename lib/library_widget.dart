@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:player/dataanalysis.dart';
 import 'package:player/root_widget.dart';
+import 'package:player/utils.dart';
 
 import 'musicplayer.dart';
 import 'music.dart';
@@ -218,7 +219,7 @@ class SongListWidgetState extends State<SongListWidget> {
                                   height: _SONG_STATE_INDICATOR_SIZE,
                                 ),
                                 Text(
-                                  song.artists[0].name,
+                                  Utils.secondsToTimeString(song.secondsListened),
                                   style: Theme.of(context).textTheme.subtitle,
                                 ),
                               ],

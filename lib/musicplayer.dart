@@ -65,18 +65,14 @@ class MusicPlayer {
   }
 
   Future<void> skip() async {
-    print(1);
     await _audioPlayer.stop();
     _endedSongs.addLast(_queue.removeFirst());
-    print(3);
     if (_queue.isEmpty) {
       _queue.add(_endedSongs.removeFirst());
     }
-    print(2);
     await _playLocal(_queue.first.audio.path);
     _notifyOnSkipListeners(_queue.first);
     _notifyOnPlayListeners(_queue.first);
-    print(4);
   }
 
   Future<void> play(SongList songList, int index) async {

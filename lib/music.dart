@@ -11,6 +11,7 @@ class Song {
   List<Artist> _artists;
   int _timeAdded;
   Album album;
+  int secondsListened;
 
   File audio;
   File image;
