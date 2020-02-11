@@ -6,7 +6,7 @@ import 'package:player/database.dart';
 import 'package:player/musicplayer.dart';
 import 'package:player/music.dart';
 
-const double IMAGE_TO_BODY_WIDTH_PERCENTAGE = 0.65;
+const double IMAGE_TO_BODY_WIDTH_PERCENTAGE = 0.8;
 const double BODY_PADDING = 20;
 const double PLAYBACK_CONTROL_ICON_SIZE = 24;
 const double VERTICAL_GAP = 40;
