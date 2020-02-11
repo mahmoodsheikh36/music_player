@@ -244,7 +244,7 @@ class SongListWidgetState extends State<SongListWidget> {
                                   height: _SONG_STATE_INDICATOR_SIZE,
                                 ),
                                 Text(
-                                  Utils.secondsToTimeString(song.secondsListened),
+                                  song.artists[0].name + " " + Utils.secondsToTimeString(song.secondsListened),
                                   style: Theme.of(context).textTheme.subtitle,
                                 ),
                               ],
