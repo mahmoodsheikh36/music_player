@@ -9,6 +9,7 @@ import 'package:player/music.dart';
 const double IMAGE_TO_BODY_WIDTH_PERCENTAGE = 0.65;
 const double BODY_PADDING = 20;
 const double PLAYBACK_CONTROL_ICON_SIZE = 24;
+const double VERTICAL_GAP = 40;
 
 class MusicPlayerWidget extends StatefulWidget {
   final MusicPlayer _musicPlayer;
@@ -72,14 +73,14 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                   }
                 },
               ),
-              SizedBox(height: 40),
+              SizedBox(height: VERTICAL_GAP),
               Text(
                 _musicPlayer.currentSong.name + ' - ' + _musicPlayer.currentSong.artists[0].name,
                 style: Theme.of(context).textTheme.title,
               ),
-              SizedBox(height: 40),
+              SizedBox(height: VERTICAL_GAP),
               _ProgressIndicator(_musicPlayer),
-              SizedBox(height: 40),
+              SizedBox(height: VERTICAL_GAP),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
@@ -104,11 +105,16 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                     iconSize: PLAYBACK_CONTROL_ICON_SIZE,
                   ),
                   IconButton(
-                    tooltip: 'go back',
+                    tooltip: 'skip to previous',
                     icon: Icon(
                       Icons.skip_previous,
                     ),
                     iconSize: PLAYBACK_CONTROL_ICON_SIZE,
+                    onPressed: () {
+                      _musicPlayer.skipToPrevious().then((_) {
+                        print('skipped to previous');
+                      });
+                    },
                   ),
                   _PlayPauseButton(_musicPlayer),
                   IconButton(

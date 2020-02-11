@@ -75,6 +75,36 @@ class MusicPlayer {
     _notifyOnPlayListeners(_queue.first);
   }
 
+  Future skipToPrevious() async {
+    int positionInMillis = await getCurrentPosition();
+    print(positionInMillis);
+    await _audioPlayer.stop();
+    print('endedSongs queue size: ' + _endedSongs.length.toString());
+    /* if more than 4 seconds, then we want to go to the beginning of the song */
+    if (positionInMillis > 4000) {
+      print(1);
+      _playLocal(_queue.first.audio.path);
+      _notifyOnSeekListeners(new Duration(seconds: 0));
+    } else {
+      Song lastEndedSong = _endedSongs.isNotEmpty ? _endedSongs.removeLast() : null;
+      _endedSongs.addLast(_queue.removeFirst());
+      if (lastEndedSong != null) {
+        print(2);
+        _queue.addFirst(lastEndedSong);
+        _playLocal(_queue.first.audio.path);
+        _notifyOnSkipListeners(_queue.first);
+        _notifyOnPlayListeners(_queue.first);
+      } else {
+        print(3);
+        _queue.addFirst(_endedSongs.removeFirst());
+        _playLocal(_queue.first.audio.path);
+        /* if there were no songs in the ended songs queue,
+          consider it a seek-to-position action */
+        _notifyOnSeekListeners(new Duration(seconds: 0));
+      }
+    }
+  }
+
   Future<void> play(SongList songList, int index) async {
     Song song = songList.songs[index];
     if (_queue.isNotEmpty) {

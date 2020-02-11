@@ -1,7 +1,10 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:player/dataanalysis.dart';
 import 'package:player/root_widget.dart';
 import 'package:player/utils.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'musicplayer.dart';
 import 'music.dart';
@@ -36,6 +39,19 @@ class _MusicLibraryWidgetState extends State<MusicLibraryWidget> {
   MusicLibrary _library;
   MusicPlayer _player;
   DbProvider _dbProvider;
+  ScrollController _scrollController;
+  final _sharedPreferencesScrollOffsetKey = "library_scroll_offset";
+
+  void _saveScrollOffset(double offset) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_sharedPreferencesScrollOffsetKey, offset);
+  }
+  Future<double> _getSavedScrollOffset() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey(_sharedPreferencesScrollOffsetKey))
+      return prefs.getDouble(_sharedPreferencesScrollOffsetKey);
+    return 0;
+  }
 
   _MusicLibraryWidgetState(
       MusicLibrary library,
@@ -44,17 +60,26 @@ class _MusicLibraryWidgetState extends State<MusicLibraryWidget> {
     _library = library;
     _player = player;
     _dbProvider = provider;
+    /* we dont want it to be null incase the widget gets built before
+       the sharedpreference for the offset value gets loaded
+     */
+    _getSavedScrollOffset().then((double savedOffset) {
+      _scrollController = ScrollController(initialScrollOffset: savedOffset);
+      _scrollController.addListener(() {
+        print('saving offset');
+        _saveScrollOffset(_scrollController.offset);
+      });
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-      /*
-      future: ,
-       */
     if (_library.isPrepared) {
       print('library is prepared, building the widget...');
       return Scrollbar(
         child: ListView.builder(
+          key: new PageStorageKey('listview'),
+          controller: _scrollController,
           padding: EdgeInsets.all(_PADDING_BETWEEN_ELEMENTS),
           itemCount: _library.songLists.length,
           itemBuilder: (context, index) {
