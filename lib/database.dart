@@ -945,6 +945,7 @@ class DbProvider {
       print('adding song audio to download queue: ' + song.name);
       _httpRequestFunctionQueue.add((functionQueueCallback) async {
         Map songAudio = await _getSongAudioRow(song.id);
+        print('downloading audio with bitrate of ' + songAudio['bitrate'].toString());
         int fileId = songAudio['file_id'];
         String savedFilename = await _getFileName(fileId);
         final response = await http.get(
@@ -986,10 +987,11 @@ class DbProvider {
 
   Future<Map> _getSongAudioRow(int songId) async {
     List<Map> maps = await db.query(
-      'song_audio',
-      columns: null,
-      where: 'song_id = ?',
-      whereArgs: [songId]
+        'song_audio',
+        columns: null,
+        where: 'song_id = ?',
+        whereArgs: [songId],
+        orderBy: 'bitrate'
     );
     return maps[0];
   }
