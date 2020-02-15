@@ -24,7 +24,6 @@ const _FILES_FOLDER = 'files';
 
 class DbProvider {
   Database db;
-  bool _isNewDatabase = true;
   FunctionQueue _httpRequestFunctionQueue = FunctionQueue();
 
   Future<Map<String, dynamic>> _fetchMetadata() async {
@@ -56,8 +55,6 @@ class DbProvider {
     for (final song in songs) {
       await _addSongsRow(
           song['id'],
-          song['name'],
-          song['lyrics'],
           song['time_added']);
     }
     final songArtists = metadata['song_artists'] as List;
@@ -72,7 +69,9 @@ class DbProvider {
       await _addAlbumSongsRow(
           albumSong['id'],
           albumSong['song_id'],
-          albumSong['album_id']);
+          albumSong['album_id'],
+          albumSong['index_in_album'],
+      );
     }
     final albums = metadata['albums'] as List;
     for (final album in albums) {
@@ -92,7 +91,8 @@ class DbProvider {
           songAudio['id'],
           songAudio['song_id'],
           songAudio['user_static_file_id'],
-          songAudio['duration']);
+          songAudio['duration'],
+          songAudio['bitrate']);
     }
     final songImages = metadata['song_images'] as List;
     for (final songImage in songImages) {
@@ -126,14 +126,6 @@ class DbProvider {
     for (final playlistSong in playlistSongs) {
       /* TODO: handle this trash code wtf, should be done like that thats stupid
       */
-      int playlistId = playlistSong['playlist_id'];
-      int songId = playlistSong['song_id'];
-      if (playlistId == LIKED_SONGS_PLAYLIST_ID) {
-        if (await isSongLiked(songId)) {
-          print('skipping already added liked song');
-          continue;
-        }
-      }
       await _addPlaylistSongsRow(
           playlistSong['id'],
           playlistSong['song_id'],
@@ -147,10 +139,61 @@ class DbProvider {
           playlistImage['playlist_id'],
           playlistImage['user_static_file_id']);
     }
-    final hiddenAlbums = metadata['hidden_albums'] as List;
-    for (final hiddenAlbum in hiddenAlbums) {
-      int albumId = hiddenAlbum['album_id'];
-      await _deleteAlbum(albumId);
+    final playlistRemovals = metadata['playlist_removals'];
+    for (final playlistRemoval in playlistRemovals) {
+      await _addPlaylistRemovalsRow(
+        playlistRemoval['id'],
+        playlistRemoval['playlist_id'],
+        playlistRemoval['time_added'],
+      );
+    }
+    final songLyrics = metadata['song_lyrics'];
+    for (final lyrics in songLyrics) {
+      await _addSongLyricsRow(
+        lyrics['id'],
+        lyrics['song_id'],
+        lyrics['lyrics'],
+      );
+    }
+    final songNames = metadata['song_names'];
+    for (final songName in songNames) {
+      await _addSongNamesRow(
+        songName['id'],
+        songName['song_id'],
+        songName['name'],
+      );
+    }
+    final likedSongs = metadata['liked_songs'];
+    for (final likedSong in likedSongs) {
+      if (await isSongLiked(likedSong['song_id']))
+        continue;
+      await _addLikedSongsRow(
+        likedSong['id'],
+        likedSong['song_id'],
+      );
+    }
+    final likedSongRemovals = metadata['liked_song_removals'];
+    for (final likedSongRemoval in likedSongRemovals) {
+      await _addLikedSongRemovalsRow(
+        likedSongRemoval['id'],
+        likedSongRemoval['song_id'],
+      );
+    }
+    final playlistSongAdditions = metadata['playlist_song_additions'];
+    for (final playlistSongAddition in playlistSongAdditions) {
+      await _addPlaylistSongAdditionsRow(
+        playlistSongAddition['id'],
+        playlistSongAddition['playlist_id'],
+        playlistSongAddition['song_id'],
+      );
+    }
+    final playlistSongRemovals = metadata['playlist_song_removals'];
+    for (final playlistSongRemoval in playlistSongRemovals) {
+      await _addPlaylistSongRemovalsRow(
+        playlistSongRemoval['id'],
+        playlistSongRemoval['playlist_id'],
+        playlistSongRemoval['song_id'],
+      );
     }
   }
 
@@ -166,8 +209,73 @@ class DbProvider {
       ''');
 
     await db.execute('''
+      CREATE TABLE playlist_removals (
+        id INTEGER PRIMARY KEY,
+        playlist_id int,
+        FOREIGN KEY (playlist_id) REFERENCES playlists (id)
+      );
+      ''');
+
+    await db.execute('''
+      CREATE TABLE song_lyrics (
+        id INTEGER PRIMARY KEY,
+        song_id int,
+        lyrics TEXT NOT NULL,
+        FOREIGN KEY (song_id) REFERENCES songs (id)
+      );
+      ''');
+
+    await db.execute('''
+      CREATE TABLE song_names (
+        id INTEGER PRIMARY KEY,
+        song_id int,
+        name TEXT NOT NULL,
+        FOREIGN KEY (song_id) REFERENCES songs (id)
+      );
+      ''');
+
+    await db.execute('''
+      CREATE TABLE liked_songs (
+        id INTEGER PRIMARY KEY,
+        song_id int,
+        time_added int,
+        FOREIGN KEY (song_id) REFERENCES songs (id)
+      );
+      ''');
+
+    await db.execute('''
+      CREATE TABLE liked_song_removals (
+        id INTEGER PRIMARY KEY,
+        song_id int,
+        FOREIGN KEY (song_id) REFERENCES songs (id)
+      );
+      ''');
+
+    await db.execute('''
+      CREATE TABLE playlist_song_additions (
+        id INTEGER PRIMARY KEY,
+        song_id int,
+        playlist_id int,
+        time_added int,
+        FOREIGN KEY (song_id) REFERENCES songs (id),
+        FOREIGN KEY (playlist_id) REFERENCES playlists (id)
+      );
+      ''');
+
+    await db.execute('''
+      CREATE TABLE playlist_song_removals (
+        id INTEGER PRIMARY KEY,
+        song_id int,
+        playlist_id int,
+        time_added int,
+        FOREIGN KEY (song_id) REFERENCES songs (id),
+        FOREIGN KEY (playlist_id) REFERENCES playlists (id)
+      );
+      ''');
+
+    await db.execute('''
       CREATE TABLE playlist_images (
-        id int,
+        id INTEGER PRIMARY KEY,
         playlist_id int,
         file_id int,
         FOREIGN KEY (playlist_id) REFERENCES playlists (id),
@@ -177,7 +285,7 @@ class DbProvider {
 
     await db.execute('''
       CREATE TABLE playlists (
-        id int,
+        id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         time_added int
       );
@@ -185,25 +293,25 @@ class DbProvider {
 
     await db.execute('''
       CREATE TABLE playlist_songs (
-        id int,
+        id INTEGER PRIMARY KEY,
         song_id int,
         playlist_id int,
-        time_added int
+        time_added int,
+        FOREIGN KEY (song_id) REFERENCES songs (id),
+        FOREIGN KEY (playlist_id) REFERENCES playlists (id)
       );
       ''');
 
     await db.execute('''
       CREATE TABLE songs (
-        id int,
-        name TEXT NOT NULL,
-        lyrics TEXT,
+        id INTEGER PRIMARY KEY,
         time_added int
       );
       ''');
 
     await db.execute('''
       CREATE TABLE song_artists (
-        id int,
+        id INTEGER PRIMARY KEY,
         artist_id int,
         song_id int,
         FOREIGN KEY (artist_id) REFERENCES artists (id),
@@ -213,9 +321,11 @@ class DbProvider {
 
     await db.execute('''
       CREATE TABLE album_songs (
-        id int,
+        id INTEGER PRIMARY KEY,
         song_id int,
         album_id int,
+        index_in_album int,
+        time_added int,
         FOREIGN KEY (song_id) REFERENCES songs (id),
         FOREIGN KEY (album_id) REFERENCES albums (id)
       );
@@ -223,7 +333,7 @@ class DbProvider {
 
     await db.execute('''
       CREATE TABLE albums (
-        id int,
+        id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         artist_id int,
         time_added int,
@@ -233,7 +343,7 @@ class DbProvider {
 
     await db.execute('''
       CREATE TABLE single_songs (
-        id int,
+        id INTEGER PRIMARY KEY,
         song_id int,
         FOREIGN KEY (song_id) REFERENCES songs (id)
       );
@@ -241,10 +351,11 @@ class DbProvider {
 
     await db.execute('''
       CREATE TABLE song_audio (
-        id int,
+        id INTEGER PRIMARY KEY,
         song_id int,
         file_id int,
         duration int,
+        bitrate int,
         FOREIGN KEY (song_id) REFERENCES songs (id),
         FOREIGN KEY (file_id) REFERENCES files (id)
       );
@@ -252,7 +363,7 @@ class DbProvider {
 
     await db.execute('''
       CREATE TABLE song_images (
-        id int,
+        id INTEGER PRIMARY KEY,
         song_id int,
         file_id int,
         FOREIGN KEY (song_id) REFERENCES songs (id),
@@ -262,7 +373,7 @@ class DbProvider {
 
     await db.execute('''
       CREATE TABLE album_images (
-        id int,
+        id INTEGER PRIMARY KEY,
         album_id int,
         file_id int,
         FOREIGN KEY (album_id) REFERENCES albums (id),
@@ -272,7 +383,7 @@ class DbProvider {
 
     await db.execute('''
       CREATE TABLE artists (
-        id int,
+        id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         time_added int
       );
@@ -280,7 +391,7 @@ class DbProvider {
 
     await db.execute('''
       CREATE TABLE files (
-        id id,
+        id INTEGER PRIMARY KEY,
         name TEXT
       );
       ''');
@@ -336,7 +447,7 @@ class DbProvider {
 
   Future _openDb() async {
     final DATABASE_PATH = await Files.getAbsoluteFilePath('music.db');
-    //await deleteDatabase(DATABASE_PATH);
+    await deleteDatabase(DATABASE_PATH);
     db = await openDatabase(
         DATABASE_PATH,
         version: 11,
@@ -449,19 +560,18 @@ class DbProvider {
     });
   }
 
-  Future _addAlbumSongsRow(int id, int songId, int albumId) async {
+  Future _addAlbumSongsRow(int id, int songId, int albumId, int indexInAlbum) async {
     await db.insert('album_songs', <String, dynamic>{
       'id': id,
       'song_id': songId,
       'album_id': albumId,
+      'index_in_album': indexInAlbum,
     });
   }
 
-  Future _addSongsRow(int id, String name, String lyrics, int timeAdded) async {
+  Future _addSongsRow(int id, int timeAdded) async {
     await db.insert('songs', <String, dynamic>{
       'id': id,
-      'name': name,
-      'lyrics': lyrics,
       'time_added': timeAdded,
     });
   }
@@ -487,12 +597,14 @@ class DbProvider {
       int id,
       int songId,
       int fileId,
-      int duration) async {
+      int duration,
+      int bitrate) async {
     await db.insert('song_audio', <String, dynamic>{
       'id': id,
       'song_id': songId,
       'file_id': fileId,
       'duration': duration,
+      'bitrate': bitrate
     });
   }
 
@@ -535,7 +647,6 @@ class DbProvider {
       columns: null,
       orderBy: 'time_added DESC',
     );
-    print(maps[0]['time_added']);
     return maps;
   }
 
@@ -613,8 +724,11 @@ class DbProvider {
         'album_songs',
         columns: null,
         where: 'album_id = ?',
-        whereArgs: [albumId]
+        whereArgs: [albumId],
+        orderBy: 'index_in_album'
     );
+    if (maps.length > 0)
+      print('index: ' + maps[0]['index_in_album'].toString());
     return maps;
   }
 
@@ -649,8 +763,8 @@ class DbProvider {
     Map songMap = await _getSongsRow(songId);
     Song song = Song(
         songMap['id'],
-        songMap['name'],
-        songMap['lyrics'],
+        await _getSongName(songMap['id']),
+        await _getSongLyrics(songMap['id']),
         await getSongArtists(songMap['id']),
         songMap['time_added']);
 
@@ -1093,26 +1207,165 @@ class DbProvider {
     }
   }
 
-  Future addSongToLikedSongsPlaylist(int songId) async {
-    final response = await http.post(_BACKEND +
-        '/music/add_song_to_playlist?playlist_id=$LIKED_SONGS_PLAYLIST_ID&song_id=$songId',
+  Future _addSongLyricsRow(
+      int id,
+      int songId,
+      String lyrics) async {
+    await db.insert('song_lyrics', <String, dynamic>{
+      'song_id': songId,
+      'lyrics': lyrics,
+    });
+  }
+
+  Future _addPlaylistRemovalsRow(
+      int id,
+      int playlistId,
+      int timeAdded) async {
+    await db.insert('song_lyrics', <String, dynamic>{
+      'id': id,
+      'playlist_id': playlistId,
+      'time_added': timeAdded,
+    });
+  }
+
+  Future _addSongNamesRow(
+      int id,
+      int songId,
+      String name) async {
+    await db.insert('song_names', <String, dynamic>{
+      'id': id,
+      'song_id': songId,
+      'name': name,
+    });
+  }
+
+  Future _addLikedSongsRow(
+      int id,
+      int songId) async {
+    await db.insert('liked_songs', <String, dynamic>{
+      'id': id,
+      'song_id': songId,
+    });
+  }
+
+  Future _addLikedSongRemovalsRow(
+      int id,
+      int songId) async {
+    await db.insert('liked_song_removals', <String, dynamic>{
+      'id': id,
+      'song_id': songId,
+    });
+  }
+
+  Future _addPlaylistSongAdditionsRow(
+      int id,
+      int playlistId,
+      int songId) async {
+    await db.insert('playlist_song_additions', <String, dynamic>{
+      'id': id,
+      'song_id': songId,
+      'playlist_id': playlistId,
+    });
+  }
+
+  Future _addPlaylistSongRemovalsRow(
+      int id,
+      int playlistId,
+      int songId) async {
+    await db.insert('playlist_song_removals', <String, dynamic>{
+      'id': id,
+      'song_id': songId,
+      'playlist_id': playlistId,
+    });
+  }
+
+  Future<Map<String, dynamic>> _getSongNamesRow(int songId) async {
+    List<Map> maps = await db.query(
+      'song_names',
+      columns: null,
+      where: 'song_id = ?',
+      whereArgs: [songId],
+    );
+    if (maps.length == 0)
+      return null;
+    return maps[0];
+  }
+
+  Future<String> _getSongName(int songId) async {
+    Map map = await _getSongNamesRow(songId);
+    print('name: ' + map['name']);
+    return map['name'];
+  }
+
+  Future<Map<String, dynamic>> _getSongLyricsRow(int songId) async {
+    List<Map> maps = await db.query(
+      'song_lyrics',
+      columns: null,
+      where: 'song_id = ?',
+      whereArgs: [songId],
+    );
+    if (maps.length == 0)
+      return null;
+    return maps[0];
+  }
+
+  Future<String> _getSongLyrics(int songId) async {
+    Map map = await _getSongLyricsRow(songId);
+    if (map == null)
+      return null;
+    return map['lyrics'];
+  }
+
+  Future<List<Map>> _getLikedSongsRows() async {
+    List<Map> maps = await db.query(
+      'liked_songs',
+      columns: null,
+    );
+    return maps;
+  }
+
+  Future<List<Song>> getLikedSongs() async {
+    List<Map> likedSongsRows = await _getLikedSongsRows();
+    List<Song> likedSongs = [];
+    for (final likedSongsRow in likedSongsRows) {
+      likedSongs.add(await _getSong(likedSongsRow['song_id']));
+    }
+    return likedSongs;
+  }
+
+  Future likeSong(int songId) async {
+    final response = await http.post(
+      _BACKEND + '/music/like_song?id=$songId',
       body: {
         'username': _USERNAME,
         'password': _PASSWORD,
       }
     );
-    int rowId = int.tryParse(response.body);
-    if (rowId != null) {
-      await _addPlaylistSongsRow(
-          rowId, songId, LIKED_SONGS_PLAYLIST_ID, Utils.currentTime());
-      print('added song to liked songs playlist');
+    final json = jsonDecode(response.body);
+    if (json['success']) {
+      _addLikedSongsRow(
+          json['liked_songs_row_id'],
+          songId
+      );
+      print('successfully liked song');
     } else {
-      print(response.body);
+      print(json['error']);
     }
   }
 
-  Future<bool> isSongLiked(int songId) async {
-    Map playlistSongsRow = await _getPlaylistSongsRow(LIKED_SONGS_PLAYLIST_ID, songId);
-    return playlistSongsRow != null;
+  Future<Map> _getLikedSongsRow(int songId) async {
+    List<Map> maps = await db.query(
+      'liked_songs',
+      columns: null,
+      where: 'song_id = ?',
+      whereArgs: [songId]
+    );
+    if (maps.length == 0)
+      return null;
+    return maps[0];
+  }
+
+  Future<bool> isSongLiked(int songId) async{
+    return (await _getLikedSongsRow(songId)) != null;
   }
 }

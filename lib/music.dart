@@ -104,6 +104,30 @@ class SingleSongsList implements SongList {
 
 }
 
+class LikedSongsList implements SongList {
+  List<Song> _songs;
+  File image;
+
+  LikedSongsList(List<Song> singleSongs, File image) {
+    _songs = singleSongs;
+    this.image = image;
+  }
+
+  @override
+  bool get hasImage => image != null;
+
+  @override
+  List<Song> get songs => _songs;
+
+  @override
+  String get subtitle => _songs.length.toString() +
+      (_songs.length == 1 ? ' song' : ' songs');
+
+  @override
+  String get title => 'Liked Songs';
+
+}
+
 class Album implements SongList {
   int _id;
   Artist _artist;
@@ -156,6 +180,7 @@ class MusicLibrary {
   List<Album> _albums;
   SingleSongsList _singlesList;
   List<Playlist> playlists;
+  LikedSongsList _likedSongsList;
   DbProvider _dbProvider;
   bool _prepared = false;
   bool _preparing = false;
@@ -175,6 +200,9 @@ class MusicLibrary {
         await _dbProvider.getSingles(),
         await Utils.getAssetAsFile('music_note.png'),
       );
+      _likedSongsList = LikedSongsList(
+          await _dbProvider.getLikedSongs(),
+          await Utils.getAssetAsFile('liked_songs_image.png'));
 
       /* playlists have to be created after albums and single songs */
       /* because the library provides playlists with its songs */
@@ -204,6 +232,7 @@ class MusicLibrary {
   }
   List<SongList> get songLists {
     List<SongList> all = List();
+    all.add(_likedSongsList);
     all.add(_singlesList);
     all.addAll(playlists);
     all.addAll(_albums);

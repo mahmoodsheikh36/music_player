@@ -6,7 +6,7 @@ import 'package:player/database.dart';
 import 'package:player/musicplayer.dart';
 import 'package:player/music.dart';
 
-const double IMAGE_TO_BODY_WIDTH_PERCENTAGE = 0.8;
+const double IMAGE_TO_BODY_WIDTH_PERCENTAGE = 0.6;
 const double BODY_PADDING = 20;
 const double PLAYBACK_CONTROL_ICON_SIZE = 24;
 const double VERTICAL_GAP = 40;
@@ -93,7 +93,7 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                     onPressed: () {
                       _dbProvider.isSongLiked(_musicPlayer.currentSong.id).then((isLiked) {
                         if (!isLiked) {
-                          _dbProvider.addSongToLikedSongsPlaylist(
+                          _dbProvider.likeSong(
                               _musicPlayer.currentSong.id).then((whatever) {
                             setState(() {});
                           });
