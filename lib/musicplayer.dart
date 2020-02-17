@@ -97,7 +97,7 @@ class MusicPlayer {
         _queue.addFirst(_endedSongs.removeFirst());
         _playLocal(_queue.first.audio.path);
         /* if there were no songs in the ended songs queue,
-          consider it a seek-to-position action */
+          consider it a seek-to-position/replay action */
         _notifyOnSeekListeners(new Duration(seconds: 0));
         if (wasPaused)
           _notifyOnResumeListeners();
