@@ -19,3 +19,4 @@
 15. currently there is no way to add playlists or add songs to playlists or do anything related to playlists at all except for the Liked Songs playlist lol
 16. i think when a songs audio gave an error while being downloaded the audio for the next songs in the queue wont be downloaded as the queueCallBack wont be called
 18. the functions in dataanalysis module need to be rewritten, they dont calculate things right
+19. when you switch to another album after requesting a song to be downloaded it wont show that the song was downloaded if you come back to that album and it finishes downloading a song from that album after u came back to it from another album, i have to give a callback to the downloader that would reset the state of the widget when its done downloading
