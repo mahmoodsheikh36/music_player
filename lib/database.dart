@@ -55,6 +55,7 @@ class DbProvider {
     for (final song in songs) {
       await _addSongsRow(
           song['id'],
+          song['name'],
           song['time_added']);
     }
     final songArtists = metadata['song_artists'] as List;
@@ -155,14 +156,6 @@ class DbProvider {
         lyrics['lyrics'],
       );
     }
-    final songNames = metadata['song_names'];
-    for (final songName in songNames) {
-      await _addSongNamesRow(
-        songName['id'],
-        songName['song_id'],
-        songName['name'],
-      );
-    }
     final likedSongs = metadata['liked_songs'];
     for (final likedSong in likedSongs) {
       if (await isSongLiked(likedSong['song_id']))
@@ -195,6 +188,12 @@ class DbProvider {
         playlistSongRemoval['song_id'],
       );
     }
+    if (metadata.containsKey('deleted_albums')) {
+      final deletedAlbums = metadata['deleted_albums'];
+      for (final deletedAlbum in deletedAlbums) {
+        await _deleteAlbum(deletedAlbum['album_id']);
+      }
+    }
   }
 
   Future _onConfigure(Database db) async {
@@ -221,15 +220,6 @@ class DbProvider {
         id INTEGER PRIMARY KEY,
         song_id int,
         lyrics TEXT NOT NULL,
-        FOREIGN KEY (song_id) REFERENCES songs (id)
-      );
-      ''');
-
-    await db.execute('''
-      CREATE TABLE song_names (
-        id INTEGER PRIMARY KEY,
-        song_id int,
-        name TEXT NOT NULL,
         FOREIGN KEY (song_id) REFERENCES songs (id)
       );
       ''');
@@ -305,6 +295,7 @@ class DbProvider {
     await db.execute('''
       CREATE TABLE songs (
         id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
         time_added int
       );
       ''');
@@ -447,7 +438,7 @@ class DbProvider {
 
   Future _openDb() async {
     final DATABASE_PATH = await Files.getAbsoluteFilePath('music.db');
-    await deleteDatabase(DATABASE_PATH);
+    //await deleteDatabase(DATABASE_PATH);
     db = await openDatabase(
         DATABASE_PATH,
         version: 11,
@@ -569,9 +560,10 @@ class DbProvider {
     });
   }
 
-  Future _addSongsRow(int id, int timeAdded) async {
+  Future _addSongsRow(int id, String name, int timeAdded) async {
     await db.insert('songs', <String, dynamic>{
       'id': id,
+      'name': name,
       'time_added': timeAdded,
     });
   }
@@ -683,6 +675,24 @@ class DbProvider {
     return albums;
   }
 
+  Future<List<Map>> _getArtistsRows() async {
+    List<Map> maps = await db.query(
+      'artists',
+      columns: null,
+      orderBy: 'time_added DESC',
+    );
+    return maps;
+  }
+
+  Future<List<Map>> _getAlbumSongsRows() async {
+    List<Map> maps = await db.query(
+      'album_songs',
+      columns: null,
+      orderBy: 'time_added DESC',
+    );
+    return maps;
+  }
+
   Future<File> _getAlbumImage(int albumId) async {
     Map albumImage = await _getAlbumImagesRow(albumId);
     int fileId = albumImage['file_id'];
@@ -727,8 +737,6 @@ class DbProvider {
         whereArgs: [albumId],
         orderBy: 'index_in_album'
     );
-    if (maps.length > 0)
-      print('index: ' + maps[0]['index_in_album'].toString());
     return maps;
   }
 
@@ -763,7 +771,7 @@ class DbProvider {
     Map songMap = await _getSongsRow(songId);
     Song song = Song(
         songMap['id'],
-        await _getSongName(songMap['id']),
+        songMap['name'],
         await _getSongLyrics(songMap['id']),
         await getSongArtists(songMap['id']),
         songMap['time_added']);
@@ -1171,31 +1179,68 @@ class DbProvider {
     });
   }
 
-  /* wipes it from the face of the earth */
   Future _deleteAlbum(int albumId) async {
-    print('deleting album ' + albumId.toString());
-    Map albumMap = await _getAlbumsRow(albumId);
-    if (albumMap == null) {
+    Map albumRow = await _getAlbumsRow(albumId);
+    if (albumRow == null) {
       print('album $albumId doesnt exist, no need to delete it');
       return;
     }
-    Map albumImage = await _getAlbumImagesRow(albumId);
-    int fileId = albumImage['file_id'];
-    await _deleteDatabaseFile(fileId);
+    print('deleting album: $albumId');
     List<Map> albumSongsRows = await _getAlbumSongsRows(albumId);
     for (final albumSongsRow in albumSongsRows) {
       int songId = albumSongsRow['song_id'];
+      await _deleteSongsRow(songId);
+      await _deleteSongArtists(songId);
+      await _deleteSongLyrics(songId);
+      await _deleteAlbumSongsRow(albumSongsRow['id']);
       Map songAudio = await _getSongAudioRow(songId);
       Map songImage = await _getSongImagesRow(songId);
-      int audioFileId = songAudio['file_id'];
-      int imageFileId = songImage['file_id'];
-      _deleteDatabaseFile(audioFileId);
-      _deleteDatabaseFile(imageFileId);
+      _deleteDatabaseFile(songAudio['file_id']);
+      _deleteDatabaseFile(songImage['file_id']);
     }
+    Map albumImage = await _getAlbumImagesRow(albumId);
+    int albumImageFileId = albumImage['file_id'];
+    await _deleteDatabaseFile(albumImageFileId);
+    await _deleteAlbumsRow(albumId);
+  }
+
+  Future _deleteAlbumsRow(int albumId) async {
     await db.delete(
       'albums',
       where: 'id = ?',
       whereArgs: [albumId],
+    );
+  }
+
+  Future _deleteSongsRow(int songId) async {
+    await db.delete(
+      'songs',
+      where: 'id = ?',
+      whereArgs: [songId],
+    );
+  }
+
+  Future _deleteAlbumSongsRow(int rowId) async {
+    await db.delete(
+      'album_songs',
+      where: 'id = ?',
+      whereArgs: [rowId],
+    );
+  }
+
+  Future _deleteSongArtists(int songId) async {
+    await db.delete(
+      'song_artists',
+      where: 'song_id = ?',
+      whereArgs: [songId],
+    );
+  }
+
+  Future _deleteSongLyrics(int songId) async {
+    await db.delete(
+      'song_lyrics',
+      where: 'song_id = ?',
+      whereArgs: [songId],
     );
   }
 
@@ -1227,17 +1272,6 @@ class DbProvider {
       'id': id,
       'playlist_id': playlistId,
       'time_added': timeAdded,
-    });
-  }
-
-  Future _addSongNamesRow(
-      int id,
-      int songId,
-      String name) async {
-    await db.insert('song_names', <String, dynamic>{
-      'id': id,
-      'song_id': songId,
-      'name': name,
     });
   }
 
@@ -1280,25 +1314,6 @@ class DbProvider {
       'playlist_id': playlistId,
     });
   }
-
-  Future<Map<String, dynamic>> _getSongNamesRow(int songId) async {
-    List<Map> maps = await db.query(
-      'song_names',
-      columns: null,
-      where: 'song_id = ?',
-      whereArgs: [songId],
-    );
-    if (maps.length == 0)
-      return null;
-    return maps[0];
-  }
-
-  Future<String> _getSongName(int songId) async {
-    Map map = await _getSongNamesRow(songId);
-    print('name: ' + map['name']);
-    return map['name'];
-  }
-
   Future<Map<String, dynamic>> _getSongLyricsRow(int songId) async {
     List<Map> maps = await db.query(
       'song_lyrics',
