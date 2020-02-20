@@ -654,41 +654,206 @@ class DbProvider {
     return maps[0];
   }
 
-  Future<List<Album>> getAlbums() async {
-    List<Map> albumMaps = await _getAlbumsRows();
-    List<Album> albums = [];
-    for (Map map in albumMaps) {
-      Album album = new Album(
-        map['id'],
-        map['name'],
-        await _getArtist(map['artist_id']),
-        await _getAlbumSongs(map['id']),
-        map['time_added'],
-        image: await _getAlbumImage(map['id']),
+  Future<MusicLibrary> getMusic(callback) async {
+    await this.initIfNotAlready();
+
+    List<Map> albumsRows = await _getAlbumsRows();
+    List<Map> songsRows = await _getSongsRows();
+    List<Map> singleSongsRows = await _getSingleSongsRows();
+    List<Map> albumSongsRows = await _getAlbumSongsRows();
+    List<Map> playlistSongsRows = await _getPlaylistSongsRows();
+    List<Map> songArtistsRows = await _getSongArtistsRows();
+    List<Map> playlistsRows = await _getPlaylistsRows();
+    List<Map> likedSongsRows = await _getLikedSongsRows();
+    List<Map> songAudioRows = await _getSongAudioRows();
+    List<Map> songImagesRows = await _getSongImagesRows();
+    List<Map> playlistImagesRows = await _getPlaylistImagesRows();
+    List<Map> albumImagesRows = await _getAlbumImagesRows();
+
+    Map<int, Artist> artistsMap = {};
+    List<Artist> artistsList = await _getArtists();
+    for (Artist artist in artistsList) {
+      artistsMap.putIfAbsent(artist.id, () => artist);
+    }
+
+    Map<int, Map> filesMap = {};
+    List<Map> filesRows = await _getFilesRows();
+    for (Map filesRow in filesRows) {
+      filesMap.putIfAbsent(filesRow['id'], () => filesRow);
+    }
+
+    Map songsMap = {};
+    for (final songsRow in songsRows) {
+      int songId = songsRow['id'];
+      List<Artist> songArtists = [];
+      for (final songArtistsRow in songArtistsRows) {
+        if (songArtistsRow['song_id'] == songId)
+          songArtists.add(artistsMap[songArtistsRow['artist_id']]);
+      }
+      Song song = Song(
+        songId,
+        songsRow['name'],
+        null,
+        songArtists,
+        songsRow['time_added'],
       );
-      print(map['time_added']);
-      for (Song song in album.songs) {
+
+      for (final songAudioRow in songAudioRows) {
+        if (songAudioRow['song_id'] == song.id) {
+          song.duration = songAudioRow['duration'];
+          int audioFileId = songAudioRow['file_id'];
+          String audioFileName = filesMap[audioFileId] == null ? null :
+            filesMap[audioFileId]['name'];
+          if (audioFileName != null) {
+            song.audio = File(await Files.getAbsoluteFilePath(audioFileName));
+          }
+        }
+      }
+
+      for (final songImagesRow in songImagesRows) {
+        if (songImagesRow['song_id'] == song.id) {
+          int imageFileId = songImagesRow['file_id'];
+          String imageFileName = filesMap[imageFileId] == null ? null :
+            filesMap[imageFileId]['name'];
+          if (imageFileName != null) {
+            song.image = File(await Files.getAbsoluteFilePath(imageFileName));
+          }
+        }
+      }
+
+      song.secondsListened = (await getSecondsListenedToSong(this, song.id)).toInt();
+
+      songsMap.putIfAbsent(song.id, () => song);
+    }
+
+    List<Album> albums = [];
+
+    for (final albumsRow in albumsRows) {
+      int albumId = albumsRow['id'];
+      Artist albumArtist = artistsMap[albumsRow['artist_id']];
+      if (albumArtist == null) {
+        throw new Exception('artist not found in database for album ' +
+            albumsRow['id'].toString());
+      }
+      List<Song> albumSongs = [];
+      for (final albumSongsRow in albumSongsRows) {
+        if (albumSongsRow['album_id'] == albumId) {
+          int songId = albumSongsRow['song_id'];
+          albumSongs.add(songsMap[songId]);
+        }
+      }
+      Album album = new Album(
+        albumsRow['id'],
+        albumsRow['name'],
+        albumArtist,
+        albumSongs,
+        albumsRow['time_added']
+      );
+      for (final albumImagesRow in albumImagesRows) {
+        if (albumImagesRow['album_id'] == album.id) {
+          int imageFileId = albumImagesRow['file_id'];
+          String imageFileName = filesMap[imageFileId] == null ? null :
+            filesMap[imageFileId]['name'];
+          if (imageFileName != null) {
+            album.image = File(await Files.getAbsoluteFilePath(imageFileName));
+          }
+        }
+      }
+      for (final song in album.songs) {
         song.album = album;
       }
       albums.add(album);
     }
-    return albums;
+
+    List<Song> singleSongs = [];
+
+    for (final singleSongsRow in singleSongsRows) {
+      int songId = singleSongsRow['song_id'];
+      singleSongs.add(songsMap[songId]);
+    }
+
+    List<Song> likedSongs = [];
+
+    for (final likedSongsRow in likedSongsRows) {
+      int songId = likedSongsRow['song_id'];
+      likedSongs.add(songsMap[songId]);
+    }
+
+    List<Playlist> playlists = [];
+    for (final playlistsRow in playlistsRows) {
+      int playlistId = playlistsRow['id'];
+      Playlist playlist = Playlist(
+          playlistId,
+          playlistsRow['name'],
+          [],
+          playlistsRow['time_added'],
+      );
+      for (final playlistSongsRow in playlistSongsRows) {
+        if (playlistSongsRow['playlist_id'] == playlistId) {
+          int songId = playlistSongsRow['song_id'];
+          playlist.songs.add(songsMap[songId]);
+        }
+      }
+      for (final playlistImagesRow in playlistImagesRows) {
+        if (playlistImagesRow['album_id'] == playlist.id) {
+          int imageFileId = playlistImagesRow['file_id'];
+          String imageFileName = filesMap[imageFileId] == null ? null :
+            filesMap[imageFileId]['name'];
+          if (imageFileName != null) {
+            playlist.image = File(await Files.getAbsoluteFilePath(imageFileName));
+          }
+        }
+      }
+      playlists.add(playlist);
+    }
+
+    final singlesList = SingleSongsList(
+      singleSongs,
+      await Utils.getAssetAsFile('music_note.png'),
+    );
+
+    final likedSongsList = LikedSongsList(
+        likedSongs,
+        await Utils.getAssetAsFile('liked_songs_image.png'));
+
+    callback(albums, playlists, singlesList, likedSongsList);
+  }
+
+  Future<List<Artist>> _getSongs() async {
+  }
+
+  Future<List<Artist>> _getArtists() async {
+    List<Map> artistsRows = await _getArtistsRows();
+    List<Artist> artists = [];
+    for (final artistsRow in artistsRows) {
+      artists.add(new Artist(
+          artistsRow['id'],
+          artistsRow['name'],
+          artistsRow['time_added']));
+    }
+    return artists;
+  }
+
+  Future<List<Map>> _getSingleSongsRows() async {
+    List<Map> maps = await db.query(
+      'single_songs',
+      columns: null,
+    );
+    return maps;
+  }
+
+  Future<List<Map>> _getSongsRows() async {
+    List<Map> maps = await db.query(
+      'songs',
+      columns: null,
+    );
+    return maps;
   }
 
   Future<List<Map>> _getArtistsRows() async {
     List<Map> maps = await db.query(
       'artists',
       columns: null,
-      orderBy: 'time_added DESC',
-    );
-    return maps;
-  }
-
-  Future<List<Map>> _getAlbumSongsRows() async {
-    List<Map> maps = await db.query(
-      'album_songs',
-      columns: null,
-      orderBy: 'time_added DESC',
     );
     return maps;
   }
@@ -698,15 +863,6 @@ class DbProvider {
     int fileId = albumImage['file_id'];
     String filePath = await Files.getAbsoluteFilePath(await _getFileName(fileId));
     return filePath == null ? filePath : File(filePath);
-  }
-
-  Future<List<Song>> _getAlbumSongs(int albumId) async {
-    List<Song> songs = [];
-    List<Map> albumSongsMaps = await _getAlbumSongsRows(albumId);
-    for (final albumSongsMap in albumSongsMaps) {
-      songs.add(await _getSong(albumSongsMap['song_id']));
-    }
-    return songs;
   }
 
   Future<List<Artist>> getSongArtists(int songId) async {
@@ -729,13 +885,10 @@ class DbProvider {
     return maps;
   }
 
-  Future<List<Map>> _getAlbumSongsRows(int albumId) async {
+  Future<List<Map>> _getAlbumSongsRows() async {
     List<Map> maps = await db.query(
         'album_songs',
         columns: null,
-        where: 'album_id = ?',
-        whereArgs: [albumId],
-        orderBy: 'index_in_album'
     );
     return maps;
   }
@@ -758,15 +911,6 @@ class DbProvider {
     return maps;
   }
 
-  Future<List<Song>> getSingles() async {
-    List<Map> singleSongsMaps = await getSingleSongsRows();
-    List<Song> singles = [];
-    for (final singleSongsMap in singleSongsMaps) {
-      singles.add(await _getSong(singleSongsMap['song_id']));
-    }
-    return singles;
-  }
-
   Future<Song> _getSong(int songId) async {
     Map songMap = await _getSongsRow(songId);
     Song song = Song(
@@ -776,23 +920,6 @@ class DbProvider {
         await getSongArtists(songMap['id']),
         songMap['time_added']);
 
-    Map songAudio = await _getSongAudioRow(songId);
-    song.duration = songAudio['duration'];
-
-    int audioFileId = songAudio['file_id'];
-    String audioFileName = await _getFileName(audioFileId);
-    if (audioFileName != null) {
-      song.audio = File(await Files.getAbsoluteFilePath(audioFileName));
-    }
-
-    Map songImage = await _getSongImagesRow(songId);
-    int imageFileId = songImage['file_id'];
-    String imageFileName = await _getFileName(imageFileId);
-    if (imageFileName != null) {
-      song.image = File(await Files.getAbsoluteFilePath(imageFileName));
-    }
-
-    song.secondsListened = (await getSecondsListenedToSong(this, song.id)).toInt();
 
     return song;
   }
@@ -1004,6 +1131,46 @@ class DbProvider {
     return maps[0];
   }
 
+  Future<List<Map>> _getSongAudioRows() async {
+    List<Map> maps = await db.query(
+        'song_audio',
+        columns: null,
+    );
+    return maps;
+  }
+
+  Future<List<Map>> _getSongImagesRows() async {
+    List<Map> maps = await db.query(
+      'song_images',
+      columns: null,
+    );
+    return maps;
+  }
+
+  Future<List<Map>> _getPlaylistImagesRows() async {
+    List<Map> maps = await db.query(
+      'playlist_images',
+      columns: null,
+    );
+    return maps;
+  }
+
+  Future<List<Map>> _getAlbumImagesRows() async {
+    List<Map> maps = await db.query(
+      'album_images',
+      columns: null,
+    );
+    return maps;
+  }
+
+  Future<List<Map>> _getFilesRows() async {
+    List<Map> maps = await db.query(
+      'files',
+      columns: null,
+    );
+    return maps;
+  }
+
   Future<Map> _getAlbumImagesRow(int albumId) async {
     List<Map> maps = await db.query(
       'album_images',
@@ -1087,15 +1254,22 @@ class DbProvider {
     return maps;
   }
 
-  Future<List<Map>> _getPlaylistSongsRows(int playlistId) async {
+  Future<List<Map>> _getPlaylistSongsRows() async {
     List<Map> maps = await db.query(
       'playlist_songs',
       columns: null,
-      where: 'playlist_id = ?',
-      whereArgs: [playlistId],
     );
     return maps;
   }
+
+  Future<List<Map>> _getSongArtistsRows() async {
+    List<Map> maps = await db.query(
+      'song_artists',
+      columns: null,
+    );
+    return maps;
+  }
+
   Future<Map> _getPlaylistSongsRow(int playlistId, int songId) async {
     List<Map> maps = await db.query(
       'playlist_songs',
@@ -1106,32 +1280,6 @@ class DbProvider {
     if (maps.length == 0)
       return null;
     return maps[0];
-  }
-
-  Future getPlaylists(MusicLibrary library) async {
-    List<Map> playlistMaps = await _getPlaylistsRows();
-    List<Playlist> playlists = [];
-    for (final playlistMap in playlistMaps) {
-      final playlist = Playlist(
-        playlistMap['id'],
-        playlistMap['name'],
-        await _getPlaylistSongs(playlistMap['id'], library),
-        playlistMap['time_added'],
-        image: await _getPlaylistImage(playlistMap['id']),
-      );
-      playlists.add(playlist);
-    }
-    return playlists;
-  }
-
-  Future<List<Song>> _getPlaylistSongs(int playlistId, MusicLibrary library) async {
-    List<Map> playlistSongsMaps = await _getPlaylistSongsRows(playlistId);
-    List<Song> songs = [];
-    for (final playlistSongsMap in playlistSongsMaps) {
-      int songId = playlistSongsMap['song_id'];
-      songs.add(library.getSong(songId));
-    }
-    return songs;
   }
 
   Future<File> _getPlaylistImage(int playlistId) async {
@@ -1186,7 +1334,7 @@ class DbProvider {
       return;
     }
     print('deleting album: $albumId');
-    List<Map> albumSongsRows = await _getAlbumSongsRows(albumId);
+    List<Map> albumSongsRows = await _getSongsRowsForAlbum(albumId);
     for (final albumSongsRow in albumSongsRows) {
       int songId = albumSongsRow['song_id'];
       await _deleteSongsRow(songId);
@@ -1202,6 +1350,16 @@ class DbProvider {
     int albumImageFileId = albumImage['file_id'];
     await _deleteDatabaseFile(albumImageFileId);
     await _deleteAlbumsRow(albumId);
+  }
+
+  Future<List<Map>> _getSongsRowsForAlbum(int albumId) async {
+    List<Map> maps = await db.query(
+      'album_songs',
+      columns: null,
+      where: 'album_id = ?',
+      whereArgs: [albumId],
+    );
+    return maps;
   }
 
   Future _deleteAlbumsRow(int albumId) async {

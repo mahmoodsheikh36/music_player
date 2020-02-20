@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:core';
 import 'dart:io';
 
@@ -177,65 +178,52 @@ class Artist {
 }
 
 class MusicLibrary {
-  List<Album> _albums;
-  SingleSongsList _singlesList;
+  List<Album> albums;
+  SingleSongsList singlesList;
   List<Playlist> playlists;
-  LikedSongsList _likedSongsList;
+  LikedSongsList likedSongsList;
   DbProvider _dbProvider;
   bool _prepared = false;
-  bool _preparing = false;
 
-  MusicLibrary(DbProvider dbProvider) {
-    _dbProvider = dbProvider;
+  MusicLibrary(DbProvider provider) {
+    _dbProvider = provider;
   }
 
   Future prepare() async {
-    if (_preparing)
-      return;
-    if (!_prepared) {
-      _preparing = true;
-      await _dbProvider.initIfNotAlready();
-      _albums = await _dbProvider.getAlbums();
-      _singlesList = SingleSongsList(
-        await _dbProvider.getSingles(),
-        await Utils.getAssetAsFile('music_note.png'),
-      );
-      _likedSongsList = LikedSongsList(
-          await _dbProvider.getLikedSongs(),
-          await Utils.getAssetAsFile('liked_songs_image.png'));
-
-      /* playlists have to be created after albums and single songs */
-      /* because the library provides playlists with its songs */
-      playlists = await _dbProvider.getPlaylists(this);
-
+    Completer completer = new Completer();
+    _dbProvider.getMusic((albums, playlists, singlesList, likedSongsList) {
+      this.albums = albums;
+      this.singlesList = singlesList;
+      this.playlists = playlists;
+      this.likedSongsList = likedSongsList;
+      completer.complete();
       _prepared = true;
-    }
-    _preparing = false;
+    });
+    return completer.future;
   }
 
   Song getSong(int songId) {
-    for (final album in _albums) {
+    for (final album in albums) {
       for (final song in album.songs) {
         if (song.id == songId)
           return song;
       }
     }
-    for (final song in _singlesList.songs) {
+    for (final song in singlesList.songs) {
       if (song.id == songId)
         return song;
     }
     return null;
   }
 
-  bool get isPrepared {
-    return _prepared;
-  }
   List<SongList> get songLists {
     List<SongList> all = List();
-    all.add(_likedSongsList);
-    all.add(_singlesList);
+    all.add(likedSongsList);
+    all.add(singlesList);
     all.addAll(playlists);
-    all.addAll(_albums);
+    all.addAll(albums);
     return all;
   }
+
+  bool get isPrepared => _prepared;
 }

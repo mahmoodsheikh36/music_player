@@ -28,8 +28,7 @@ class _RootState extends State<Root> {
   _RootState(this._dbProvider, this._musicPlayer) {
     _children = [
       SafeArea(
-        //child: SongListWidget(_dbProvider, _musicPlayer),
-        child: MusicLibraryWidget(MusicLibrary(_dbProvider), _dbProvider, _musicPlayer),
+        child: MusicLibraryWidget(_dbProvider, _musicPlayer),
       ),
       SafeArea(
         child: MusicPlayerWidget(_dbProvider, _musicPlayer),

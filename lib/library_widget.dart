@@ -21,12 +21,11 @@ class MusicLibraryWidget extends StatefulWidget {
   DbProvider _dbProvider;
 
   MusicLibraryWidget(
-      MusicLibrary library,
       DbProvider provider,
       MusicPlayer player) {
-    _library = library;
     _player = player;
     _dbProvider = provider;
+    _library = MusicLibrary(_dbProvider);
   }
 
   @override
