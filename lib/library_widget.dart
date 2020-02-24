@@ -1,7 +1,6 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:player/dataanalysis.dart';
+import 'package:player/main.dart';
 import 'package:player/root_widget.dart';
 import 'package:player/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,6 +30,7 @@ class MusicLibraryWidget extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
     return _MusicLibraryWidgetState(_library, _dbProvider, _player);
+    //return TextualMusicLibraryWidgetState(_library, _player, _dbProvider);
   }
 }
 
@@ -101,6 +101,7 @@ class _MusicLibraryWidgetState extends State<MusicLibraryWidget> {
                 );
               },
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
                   songList.hasImage ?
                   Image.file(
@@ -122,6 +123,41 @@ class _MusicLibraryWidgetState extends State<MusicLibraryWidget> {
                       ),
                     ),
                   ),
+                  IconButton(
+                    icon: Icon(Icons.play_circle_outline), iconSize: 35,
+                    onPressed: () {
+                      for (Song song in songList.songs) {
+                        bool played = false;
+                        if (song.hasAudio) {
+                          if (played) {
+                            _player.addToQueue(song);
+                          } else {
+                            print('playing song ' + song.name);
+                            _player.play(song);
+                            played = true;
+                            if (this.mounted)
+                              setState(() { });
+                          }
+                        } else {
+                          _dbProvider.downloadSongAudio(song).then((gotAudio) {
+                            if (gotAudio) {
+                              if (played) {
+                                _player.addToQueue(song);
+                              } else {
+                                played = true;
+                                _player.play(song);
+                                if (this.mounted)
+                                  setState(() { });
+                              }
+                            } else {
+                              print('wont play song ' + song.name);
+                            }
+                          });
+                        }
+                      }
+                      print('gotta play ' + songList.title);
+                    },
+                  )
                 ],
               ),
             );
@@ -139,7 +175,70 @@ class _MusicLibraryWidgetState extends State<MusicLibraryWidget> {
       return Center(child: CircularProgressIndicator());
     }
   }
+}
 
+class TextualMusicLibraryWidgetState extends State<MusicLibraryWidget> {
+  MusicLibrary _library;
+  MusicPlayer _player;
+  DbProvider _dbProvider;
+
+  TextualMusicLibraryWidgetState(MusicLibrary library, MusicPlayer player,
+      DbProvider dbProvider) {
+    _library = library;
+    _player = player;
+    _dbProvider = dbProvider ;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_library.isPrepared) {
+      print('library is prepared, building the widget...');
+      return Scrollbar(
+        child: ListView.builder(
+          key: new PageStorageKey('1'), /* some unique random string */
+          padding: EdgeInsets.all(5),
+          //controller: _scrollController,
+          itemCount: _library.artists.length,
+          itemBuilder: (context, index) {
+            Artist artist = _library.artists[index];
+            return InkWell(
+              onTap: () {
+                print('tap tap tap!!! on artist ' + artist.name);
+                /*
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        SongListWidget(_dbProvider, _player, artist.),
+                  ),
+                );
+                 */
+              },
+              child: Row(
+                children: [Expanded(
+                  child: ListTile(
+                    title: Text(
+                      artist.name,
+                      style: Theme.of(context).textTheme.title,
+                    ),
+                  ),
+                ),],
+              ),
+            );
+          },
+        ),
+      );
+    } else {
+      print('library is not prepared');
+      _library.prepare().then((whatever) {
+        setState(() { });
+      }).catchError((error, stackTrace) {
+        print(error);
+        print(stackTrace);
+      });
+      return Center(child: CircularProgressIndicator());
+    }
+  }
 }
 
 class SongListWidget extends StatefulWidget {
@@ -208,12 +307,12 @@ class SongListWidgetState extends State<SongListWidget> {
                       });
 
                       if (song.hasAudio) {
-                        _player.play(_songList, songIndex);
+                        _player.play(song);
                       } else {
                         _dbProvider.downloadSongAudio(song).then((gotAudio) {
                           if (gotAudio) {
                             print('playing song ' + song.name);
-                            _player.play(_songList, songIndex);
+                            _player.play(song);
                             if (this.mounted)
                               setState(() { });
                           } else {
