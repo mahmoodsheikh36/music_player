@@ -22,7 +22,17 @@ class Utils {
     int hours = totalSeconds ~/ 3600;
     int minutes = (totalSeconds % 3600) ~/ 60;
     int seconds = totalSeconds % 60;
-    return hours.toString() + ':' + minutes.toString() + ':' + seconds.toString();
+    String str = '';
+    if (hours == 0 && minutes == 0 && seconds == 0)
+      return '';
+    if (hours > 0)
+      str += hours.toString() + ':';
+    str += minutes.toString() + ':';
+    if (seconds < 10)
+      str += '0' + seconds.toString();
+    else
+      str += seconds.toString();
+    return str;
   }
 
   /* only supports files in the base assets directory, no need for subdirectories atm */
