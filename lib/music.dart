@@ -173,8 +173,10 @@ class Artist {
   int id;
   String name;
   int timeAdded;
+  List<Album> albums;
+  List<Song> singles;
 
-  Artist(this.id, this.name, this.timeAdded);
+  Artist({this.id, this.name, this.timeAdded, this.albums, this.singles});
 }
 
 class MusicLibrary {
@@ -182,6 +184,7 @@ class MusicLibrary {
   SingleSongsList singlesList;
   List<Playlist> playlists;
   LikedSongsList likedSongsList;
+  List<Artist> artists;
   DbProvider _dbProvider;
   bool _prepared = false;
 
@@ -191,11 +194,12 @@ class MusicLibrary {
 
   Future prepare() async {
     Completer completer = new Completer();
-    _dbProvider.getMusic((albums, playlists, singlesList, likedSongsList) {
+    _dbProvider.getMusic((albums, playlists, singlesList, likedSongsList, artists) {
       this.albums = albums;
       this.singlesList = singlesList;
       this.playlists = playlists;
       this.likedSongsList = likedSongsList;
+      this.artists = artists;
       completer.complete();
       _prepared = true;
     });
