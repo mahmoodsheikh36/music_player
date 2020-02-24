@@ -541,7 +541,13 @@ class DbProvider {
     if (maps.length == 0)
       return null;
     Map artistMap = maps[0];
-    return Artist(artistMap['id'], artistMap['name'], artistMap['time_added']);
+    return Artist(
+        id: artistMap['id'],
+        name: artistMap['name'],
+        timeAdded: artistMap['time_added'],
+        singles: [],
+        albums: []
+    );
   }
 
   Future _addSingleSongsRow(int id, int songId) async {
@@ -749,6 +755,7 @@ class DbProvider {
         albumSongs,
         albumsRow['time_added']
       );
+      albumArtist.albums.add(album);
       for (final albumImagesRow in albumImagesRows) {
         if (albumImagesRow['album_id'] == album.id) {
           int imageFileId = albumImagesRow['file_id'];
@@ -769,7 +776,11 @@ class DbProvider {
 
     for (final singleSongsRow in singleSongsRows) {
       int songId = singleSongsRow['song_id'];
-      singleSongs.add(songsMap[songId]);
+      Song single = songsMap[songId];
+      singleSongs.add(single);
+      for (final artist in single.artists) {
+        artist.singles.add(single);
+      }
     }
 
     List<Song> likedSongs = [];
@@ -816,7 +827,7 @@ class DbProvider {
         likedSongs,
         await Utils.getAssetAsFile('liked_songs_image.png'));
 
-    callback(albums, playlists, singlesList, likedSongsList);
+    callback(albums, playlists, singlesList, likedSongsList, artistsList);
   }
 
   Future<List<Artist>> _getSongs() async {
@@ -826,10 +837,12 @@ class DbProvider {
     List<Map> artistsRows = await _getArtistsRows();
     List<Artist> artists = [];
     for (final artistsRow in artistsRows) {
-      artists.add(new Artist(
-          artistsRow['id'],
-          artistsRow['name'],
-          artistsRow['time_added']));
+      artists.add(Artist(
+          id: artistsRow['id'],
+          name: artistsRow['name'],
+          timeAdded: artistsRow['time_added'],
+          albums: [],
+          singles: []));
     }
     return artists;
   }
