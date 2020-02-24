@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:player/database.dart';
+import 'package:player/main.dart';
 import 'package:player/musicplayer.dart';
 import 'package:player/music.dart';
+import 'package:player/utils.dart';
 
 const double IMAGE_TO_BODY_WIDTH_PERCENTAGE = 0.6;
 const double BODY_PADDING = 20;
@@ -24,19 +26,37 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
   final MusicPlayer _musicPlayer;
   final DbProvider _dbProvider;
   bool _isCurrentSongLiked = false;
+  int _currentProgress = 0;
 
   void _onPlayListener(Song newSong) {
     setState(() {
     });
   }
 
+  void _onPositionChangeListener(Duration duration) {
+    _currentProgress = duration.inMilliseconds ~/ 1000;
+    setState(() {
+    });
+  }
+
   _MusicPlayerWidgetState(this._dbProvider, this._musicPlayer) {
     _musicPlayer.addOnPlayListener(_onPlayListener);
+    _musicPlayer.addOnPositionChangeListener(_onPositionChangeListener);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _musicPlayer.getCurrentPosition().then((seconds) {
+      _currentProgress = seconds ~/ 1000;
+      setState(() { });
+    });
   }
 
   @override
   void dispose() {
     _musicPlayer.removeOnPlayListener(_onPlayListener);
+    _musicPlayer.removeOnPositionChangeListener(_onPositionChangeListener);
     super.dispose();
   }
 
@@ -79,7 +99,13 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                 style: Theme.of(context).textTheme.title,
               ),
               SizedBox(height: VERTICAL_GAP),
-              _ProgressIndicator(_musicPlayer),
+              Row(children: <Widget>[
+                Text(Utils.secondsToTimeString(_currentProgress)),
+                SizedBox(width: 10,),
+                Expanded(child: _ProgressIndicator(_musicPlayer),),
+                SizedBox(width: 10,),
+                Text(Utils.secondsToTimeString(_musicPlayer.currentSong.duration)),
+              ],),
               SizedBox(height: VERTICAL_GAP),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -87,7 +113,7 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                   IconButton(
                     icon: Icon(
                       Icons.favorite,
-                      color: _isCurrentSongLiked ? Colors.pink : Colors.grey,
+                      color: _isCurrentSongLiked ? textColor : Colors.grey,
                       semanticLabel: 'song liked',
                     ),
                     onPressed: () {
@@ -131,7 +157,7 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
                     icon: Icon(
                       Icons.loop,
                       color: _musicPlayer.playbackMode == PlaybackMode.LOOP ?
-                        Colors.grey : Colors.pink,
+                        Colors.grey : textColor,
                       size: PLAYBACK_CONTROL_ICON_SIZE,
                       semanticLabel: 'switch between playback modes',
                     ),
