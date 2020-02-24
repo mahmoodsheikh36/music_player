@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:player/musicplayer.dart';
 import 'package:catcher/catcher_plugin.dart';
+import 'musicplayer.dart';
 import 'database.dart';
 import 'datacollection.dart';
 import 'root_widget.dart';
 
 void main() {
+  /*
   CatcherOptions releaseOptions = CatcherOptions(SilentReportMode(), [
     EmailAutoHandler("smtp.gmail.com",
         587,
-        "mahmod.m2015@gmail.com",
-        "mahmood sheikh",
-        "noil1230noil1230",
-        ['mahmod.m2015@gmail.com'])
+        "myemail",
+        "myname",
+        "mypassword",
+        ['myemail'])
   ]);
 
   Catcher(App(), releaseConfig: releaseOptions);
-  //runApp(App());
+  */
+  runApp(App());
 }
 
 Color textColor = Color(0xffddaa44);
