@@ -71,6 +71,7 @@ class MusicPlayer {
       _queue.add(_endedSongs.removeFirst());
     }
     await _playLocal(_queue.first.audio.path);
+    _playbackMode = PlaybackMode.LOOP;
     _notifyOnSkipListeners(_queue.first);
     _notifyOnPlayListeners(_queue.first);
   }
@@ -102,11 +103,11 @@ class MusicPlayer {
         if (wasPaused)
           _notifyOnResumeListeners();
       }
+      _playbackMode = PlaybackMode.LOOP;
     }
   }
 
-  Future<void> play(SongList songList, int index) async {
-    Song song = songList.songs[index];
+  Future<void> play(Song song) async {
     if (_queue.isNotEmpty) {
       await _audioPlayer.stop();
       _queue.clear();
@@ -114,6 +115,7 @@ class MusicPlayer {
     }
     _queue.addFirst(song);
     await _playLocal(song.audio.path);
+    _playbackMode = PlaybackMode.LOOP;
     _notifyOnPlayListeners(song);
   }
 
