@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:player/dataanalysis.dart';
-import 'package:player/main.dart';
 import 'package:player/root_widget.dart';
 import 'package:player/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -125,27 +124,28 @@ class _MusicLibraryWidgetState extends State<MusicLibraryWidget> {
                   ),
                   IconButton(
                     icon: Icon(Icons.play_circle_outline), iconSize: 35,
-                    onPressed: () {
+                    onPressed: () async {
+                      bool played = false;
                       for (Song song in songList.songs) {
-                        bool played = false;
                         if (song.hasAudio) {
                           if (played) {
+                            print('adding to queue ' + song.name);
                             _player.addToQueue(song);
                           } else {
-                            print('playing song ' + song.name);
-                            _player.play(song);
+                            print('playing ' + song.name);
+                            await _player.play(song);
                             played = true;
                             if (this.mounted)
                               setState(() { });
                           }
                         } else {
-                          _dbProvider.downloadSongAudio(song).then((gotAudio) {
+                          _dbProvider.downloadSongAudio(song).then((gotAudio) async {
                             if (gotAudio) {
                               if (played) {
                                 _player.addToQueue(song);
                               } else {
                                 played = true;
-                                _player.play(song);
+                                await _player.play(song);
                                 if (this.mounted)
                                   setState(() { });
                               }
@@ -155,7 +155,6 @@ class _MusicLibraryWidgetState extends State<MusicLibraryWidget> {
                           });
                         }
                       }
-                      print('gotta play ' + songList.title);
                     },
                   )
                 ],

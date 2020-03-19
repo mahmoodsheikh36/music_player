@@ -16,20 +16,26 @@ class Song {
 
   File audio;
   File image;
-  int duration;
+  double duration;
 
   Song(int id,
       String name,
       String lyrics,
       List<Artist> artists,
       int timeAdded,
-      {Album album}) {
+      File audio,
+      double duration,
+      {Album album,
+       File image}) {
     _id = id;
     _name = name;
     _lyrics = lyrics;
     _artists = artists;
     _timeAdded = timeAdded;
-    album = album;
+    this.album = album;
+    this.audio = audio;
+    this.image = image;
+    this.duration = duration;
   }
 
   bool get hasAudio => audio != null;
@@ -131,7 +137,7 @@ class LikedSongsList implements SongList {
 
 class Album implements SongList {
   int _id;
-  Artist _artist;
+  List<Artist> _artists;
   String _name;
   List<Song> _songs;
   int _timeAdded;
@@ -140,12 +146,12 @@ class Album implements SongList {
   Album(
       int id,
       String name,
-      Artist artist,
+      List<Artist> artists,
       List<Song> songs,
       int timeAdded,
-      {File image}) {
+      File image) {
     _id = id;
-    _artist = artist;
+    _artists = artists;
     _name = name;
     _songs = songs;
     _timeAdded = timeAdded;
@@ -163,7 +169,7 @@ class Album implements SongList {
   List<Song> get songs => _songs;
 
   @override
-  String get subtitle => _artist.name;
+  String get subtitle => _artists[0].name;
 
   @override
   bool get hasImage => image != null;
@@ -182,7 +188,7 @@ class Artist {
 class MusicLibrary {
   List<Album> albums;
   SingleSongsList singlesList;
-  List<Playlist> playlists;
+  //List<Playlist> playlists;
   LikedSongsList likedSongsList;
   List<Artist> artists;
   DbProvider _dbProvider;
@@ -194,10 +200,10 @@ class MusicLibrary {
 
   Future prepare() async {
     Completer completer = new Completer();
-    _dbProvider.getMusic((albums, playlists, singlesList, likedSongsList, artists) {
+    _dbProvider.getMusic((albums, singlesList, likedSongsList, artists) {
       this.albums = albums;
       this.singlesList = singlesList;
-      this.playlists = playlists;
+      //this.playlists = playlists;
       this.likedSongsList = likedSongsList;
       this.artists = artists;
       completer.complete();
@@ -224,7 +230,7 @@ class MusicLibrary {
     List<SongList> all = List();
     all.add(likedSongsList);
     all.add(singlesList);
-    all.addAll(playlists);
+    //all.addAll(playlists);
     all.addAll(albums);
     return all;
   }

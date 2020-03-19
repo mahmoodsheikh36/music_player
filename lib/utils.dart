@@ -18,13 +18,13 @@ class Utils {
     return DateTime.now().millisecondsSinceEpoch;
   }
 
-  static String secondsToTimeString(int totalSeconds) {
+  static String secondsToTimeString(int totalSeconds, {bool emptyStringAllowed=true}) {
     int hours = totalSeconds ~/ 3600;
     int minutes = (totalSeconds % 3600) ~/ 60;
-    int seconds = totalSeconds % 60;
+    int seconds = (totalSeconds % 60).toInt();
     String str = '';
     if (hours == 0 && minutes == 0 && seconds == 0)
-      return '';
+      return emptyStringAllowed ? '' : '0:00';
     if (hours > 0)
       str += hours.toString() + ':';
     str += minutes.toString() + ':';

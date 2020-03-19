@@ -1,11 +1,8 @@
-import 'dart:collection';
-
 import 'package:audioplayers/audioplayers.dart';
-
+import 'dart:async';
+import 'dart:collection';
 import 'music.dart';
-import 'files.dart';
 
-/* TODO: add more and make musicplayer_widget comptabile with them! */
 enum PlaybackMode {
   LOOP_ONE_SONG,
   LOOP
@@ -79,24 +76,23 @@ class MusicPlayer {
   Future skipToPrevious() async {
     bool wasPaused = !isPlaying();
     int positionInMillis = await getCurrentPosition();
-    print(positionInMillis);
     await _audioPlayer.stop();
     print('endedSongs queue size: ' + _endedSongs.length.toString());
     /* if more than 4 seconds, then we want to go to the beginning of the song */
     if (positionInMillis > 4000) {
-      _playLocal(_queue.first.audio.path);
+      await _playLocal(_queue.first.audio.path);
       _notifyOnSeekListeners(new Duration(seconds: 0));
     } else {
       Song lastEndedSong = _endedSongs.isNotEmpty ? _endedSongs.removeLast() : null;
       _endedSongs.addLast(_queue.removeFirst());
       if (lastEndedSong != null) {
         _queue.addFirst(lastEndedSong);
-        _playLocal(_queue.first.audio.path);
+        await _playLocal(_queue.first.audio.path);
         _notifyOnSkipListeners(_queue.first);
         _notifyOnPlayListeners(_queue.first);
       } else {
         _queue.addFirst(_endedSongs.removeFirst());
-        _playLocal(_queue.first.audio.path);
+        await _playLocal(_queue.first.audio.path);
         /* if there were no songs in the ended songs queue,
           consider it a seek-to-position/replay action */
         _notifyOnSeekListeners(new Duration(seconds: 0));
@@ -109,9 +105,9 @@ class MusicPlayer {
 
   Future<void> play(Song song) async {
     if (_queue.isNotEmpty) {
-      await _audioPlayer.stop();
       _queue.clear();
       _endedSongs.clear();
+      await _audioPlayer.stop();
     }
     _queue.addFirst(song);
     await _playLocal(song.audio.path);
@@ -184,7 +180,7 @@ class MusicPlayer {
     this._onResumeListeners.add(listener);
   }
   void removeOnResumeListener(Function listener) {
-    this._onPauseListeners.remove(listener);
+    this._onResumeListeners.remove(listener);
   }
   void _notifyOnResumeListeners() {
     print('notifying resume...');

@@ -23,7 +23,7 @@ class MusicPlayerWidget extends StatefulWidget {
 }
 
 class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
-  final MusicPlayer _musicPlayer;
+  MusicPlayer _musicPlayer;
   final DbProvider _dbProvider;
   bool _isCurrentSongLiked = false;
   int _currentProgress = 0;
@@ -39,13 +39,21 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
     });
   }
 
+  void _onResumeListener() {
+    print('on resume wtf');
+    setState(() { });
+  }
+
   _MusicPlayerWidgetState(this._dbProvider, this._musicPlayer) {
     _musicPlayer.addOnPlayListener(_onPlayListener);
     _musicPlayer.addOnPositionChangeListener(_onPositionChangeListener);
+    _musicPlayer.addOnSkipListener(_onPlayListener);
+    _musicPlayer.addOnResumeListener(_onResumeListener);
   }
 
   @override
   void initState() {
+    print('init state');
     super.initState();
     _musicPlayer.getCurrentPosition().then((seconds) {
       _currentProgress = seconds ~/ 1000;
@@ -57,6 +65,8 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
   void dispose() {
     _musicPlayer.removeOnPlayListener(_onPlayListener);
     _musicPlayer.removeOnPositionChangeListener(_onPositionChangeListener);
+    _musicPlayer.removeOnSkipListener(_onPlayListener);
+    _musicPlayer.removeOnResumeListener(_onResumeListener);
     super.dispose();
   }
 
@@ -100,11 +110,11 @@ class _MusicPlayerWidgetState extends State<MusicPlayerWidget> {
               ),
               SizedBox(height: VERTICAL_GAP),
               Row(children: <Widget>[
-                Text(Utils.secondsToTimeString(_currentProgress)),
+                Text(Utils.secondsToTimeString(_currentProgress, emptyStringAllowed: false)),
                 SizedBox(width: 10,),
                 Expanded(child: _ProgressIndicator(_musicPlayer),),
                 SizedBox(width: 10,),
-                Text(Utils.secondsToTimeString(_musicPlayer.currentSong.duration)),
+                Text(Utils.secondsToTimeString(_musicPlayer.currentSong.duration.toInt())),
               ],),
               SizedBox(height: VERTICAL_GAP),
               Row(
@@ -288,28 +298,26 @@ class _PlayPauseButton extends StatefulWidget {
 
 class _PlayPauseButtonState extends State<_PlayPauseButton> {
   final MusicPlayer _musicPlayer;
-  IconData _playPause;
 
   void _toggle() {
     bool playing = _musicPlayer.isPlaying();
     if (playing) {
-      _playPause = Icons.play_arrow;
-      _musicPlayer.pause();
+      _musicPlayer.pause().then((whatever) {
+        setState(() { });
+      });
     } else {
-      _playPause = Icons.pause;
-      _musicPlayer.resume();
+      _musicPlayer.resume().then((whatever) {
+        setState(() { });
+      });
     }
-    setState(() { }); /* just rebuild the widget */
   }
 
-  _PlayPauseButtonState(this._musicPlayer) {
-    _playPause = _musicPlayer.isPlaying() ? Icons.pause : Icons.play_arrow;
-  }
+  _PlayPauseButtonState(this._musicPlayer);
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: Icon(_playPause),
+      icon: Icon(_musicPlayer.isPlaying() ? Icons.pause : Icons.play_arrow),
       tooltip: 'toggle playing state of song',
       onPressed: _toggle,
       iconSize: 50,
